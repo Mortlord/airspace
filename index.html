@@ -354,29 +354,62 @@ function animate(){
 }
 
 /* ============ Datenabruf ============ */
+let lastGoodTs=0;
+let consecutiveFails=0;
+
+// fetch mit Abbruch-Timeout, damit ein hängender Request den nächsten Takt nicht blockiert
+function fetchTimeout(url, ms=8000){
+  const ctrl=new AbortController();
+  const id=setTimeout(()=>ctrl.abort(), ms);
+  return fetch(url,{cache:"no-store",signal:ctrl.signal})
+    .finally(()=>clearTimeout(id));
+}
+
 async function fetchData(){
   try{
+    let center, list;
+
     if(state.mode==="feeder"){
       if(!state.token){ promptToken(); return; }
-      const r=await fetch(`${BASE}/feeder?token=${encodeURIComponent(state.token)}`,{cache:"no-store"});
+      const r=await fetchTimeout(`${BASE}/feeder?token=${encodeURIComponent(state.token)}`);
       if(r.status===403){ alert("Token ungültig oder kein Owner-Token."); switchMode("gps"); return; }
+      if(!r.ok) throw new Error("HTTP "+r.status);
       const j=await r.json();
-      if(!j.ok) throw new Error("feeder");
-      state.center={lat:j.lat,lon:j.lon};
-      // Feeder liefert rohe airplanes.live-Felder im Array "aircraft"
-      state.aircraft=(j.aircraft||[]).map(normalizeRaw);
+      if(!j.ok) throw new Error("feeder not ok");
+      center={lat:j.lat,lon:j.lon};
+      list=(j.aircraft||[]).map(normalizeRaw);
     } else {
       if(!state.center){ return; } // wartet auf GPS-Fix
       const {lat,lon}=state.center;
-      const r=await fetch(`${BASE}/aircraft?lat=${lat}&lon=${lon}&radius=${state.radius}`,{cache:"no-store"});
+      const r=await fetchTimeout(`${BASE}/aircraft?lat=${lat}&lon=${lon}&radius=${state.radius}`);
+      if(!r.ok) throw new Error("HTTP "+r.status);
       const j=await r.json();
-      state.aircraft=(j.ac||[]).map(normalizeRaw);
+      if(!Array.isArray(j.ac)) throw new Error("malformed response"); // kein gültiges Datenpaket -> alte Daten behalten
+      center={lat,lon};
+      list=j.ac.map(normalizeRaw);
     }
+
+    // Erfolg: Daten übernehmen
+    if(center) state.center=center;
+    state.aircraft=list;
+    lastGoodTs=Date.now();
+    consecutiveFails=0;
+    setStale(false);
     updateCounts();
     if(state.selected) refreshSelected();
+
   }catch(e){
-    console.warn("fetchData:",e.message);
+    // Fehlgeschlagener oder unvollständiger Abruf: letzte gute Daten BEHALTEN, nicht auf 0 springen
+    consecutiveFails++;
+    console.warn(`fetchData fail #${consecutiveFails}:`, e.message);
+    // erst nach mehreren Fehlern in Folge als "stale" markieren (vermeidet Flackern bei einzelner Delle)
+    if(consecutiveFails>=3) setStale(true);
   }
+}
+
+function setStale(on){
+  const el=$("count");
+  el.style.opacity = on ? "0.4" : "1";
 }
 
 // airplanes.live-Rohformat -> einheitliches Objekt (dst NIE übernehmen, immer selbst rechnen)
@@ -433,7 +466,7 @@ function switchMode(mode){
   state.mode=mode; LS.set("mode",mode);
   document.querySelectorAll("#modeswitch button").forEach(b=>
     b.classList.toggle("active", b.dataset.mode===mode));
-  state.center=null; state.aircraft=[]; updateCounts();
+  state.center=null; state.aircraft=[]; consecutiveFails=0; setStale(false); updateCounts();
   if(mode==="gps"){ startGps(); }
   else { stopGps(); fetchData(); }
 }
@@ -459,6 +492,10 @@ function initSatMap(){
   }).addTo(satMap);
 }
 
+// Ziel-Zustand für die Interpolation (Dead-Reckoning zwischen Server-Updates)
+let satTarget=null;   // { lat, lon, track, gs, ts }
+let satAnimRunning=false;
+
 function updateSatMap(a){
   const wrap=$("satwrap"), lab=$("satLab");
   if(a.lat==null||a.lon==null){ wrap.style.display="none"; lab.style.display="none"; return; }
@@ -466,17 +503,47 @@ function updateSatMap(a){
   initSatMap();
   setTimeout(()=>satMap.invalidateSize(),60);
 
-  const ll=[a.lat,a.lon];
-  // Flugzeug bleibt fix in der Mitte -> Karte folgt der Position
-  if(!a._satCentered){ satMap.setView(ll,12); a._satCentered=true; }
-  else { satMap.panTo(ll,{animate:true,duration:0.5}); }
+  // Beim ersten Einblenden: Karte hart auf Position setzen
+  if(!a._satCentered){
+    satMap.setView([a.lat,a.lon],12);
+    a._satCentered=true;
+    satTarget={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:performance.now() };
+    startSatAnim();
+  } else {
+    // Neues Server-Update -> neuer Anker für die Hochrechnung
+    satTarget={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:performance.now() };
+  }
 
-  // Fixes Symbol in Flugrichtung drehen
   if(a.track!=null){
     $("satPlane").style.transform=`translate(-50%,-50%) rotate(${a.track}deg)`;
   }
-
   $("satCoords").innerHTML=`${a.lat.toFixed(2)}° ${a.lat>=0?'N':'S'} &nbsp; ${a.lon.toFixed(2)}° ${a.lon>=0?'E':'W'}`;
+}
+
+// Position aus letztem Anker + Kurs/Speed kontinuierlich hochrechnen
+function deadReckon(t){
+  const dt=(performance.now()-t.ts)/1000;          // Sekunden seit letztem Update
+  if(t.gs==null || t.track==null || dt<=0) return [t.lat, t.lon];
+  const distNm=(t.gs/3600)*dt;                      // Knoten -> NM in dt Sekunden
+  const distDeg=distNm/60;                          // 1 NM ≈ 1/60 Breitengrad
+  const rad=toRad(t.track);
+  const dLat=distDeg*Math.cos(rad);
+  const dLon=distDeg*Math.sin(rad)/Math.cos(toRad(t.lat));
+  return [t.lat+dLat, t.lon+dLon];
+}
+
+function startSatAnim(){
+  if(satAnimRunning) return;
+  satAnimRunning=true;
+  const step=()=>{
+    if(!satTarget || !$("sheet").classList.contains("open")){ satAnimRunning=false; return; }
+    const [lat,lon]=deadReckon(satTarget);
+    // sanftes Nachziehen der Karte (kein animiertes panTo -> kein Ruckeln, da jeder Frame minimal)
+    satMap.panTo([lat,lon],{animate:false});
+    $("satCoords").innerHTML=`${lat.toFixed(2)}° ${lat>=0?'N':'S'} &nbsp; ${lon.toFixed(2)}° ${lon>=0?'E':'W'}`;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 function setSatInset(src){
@@ -486,6 +553,7 @@ function setSatInset(src){
 }
 
 function resetSatMap(){
+  satTarget=null; satAnimRunning=false;
   setSatInset(null);
   $("satwrap").style.display="none"; $("satLab").style.display="none";
 }
@@ -656,7 +724,7 @@ window.addEventListener("resize",resize);
 sizeCanvas();
 animate();
 switchMode(state.mode);        // initialer Modus (GPS default)
-setInterval(fetchData, 2000);  // Refresh-Intervall
+setInterval(fetchData, 5000);  // Refresh-Intervall
 </script>
 </body>
 </html>
