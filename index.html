@@ -130,6 +130,10 @@
     font-size:12px;color:var(--green);letter-spacing:.06em;
     text-shadow:0 1px 3px rgba(0,0,0,.9);text-align:right}
   .plane-marker{filter:drop-shadow(0 0 4px rgba(94,242,160,.8))}
+  .sat-plane{position:absolute;top:50%;left:50%;z-index:480;
+    transform:translate(-50%,-50%) rotate(0deg);pointer-events:none;
+    filter:drop-shadow(0 0 5px rgba(94,242,160,.9));
+    transition:transform .5s ease-out}
   .sheet .cs-big{font-family:-apple-system,system-ui,sans-serif;font-weight:700;
     font-size:30px;color:var(--green);margin:14px 0 2px}
   .sheet .sub{color:var(--txt-dim);font-size:14px;letter-spacing:.06em}
@@ -191,6 +195,9 @@
     <div class="lab" id="satLab" style="display:none">Satellite Feed</div>
     <div class="satwrap" id="satwrap" style="display:none">
       <div class="satmap" id="satmap"></div>
+      <div class="sat-plane" id="satPlane">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="#5ef2a0" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0011.5 2 1.5 1.5 0 0010 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+      </div>
       <div class="sat-inset" id="satInset" style="display:none"><img id="satInsetImg" alt=""></div>
       <div class="sat-coords" id="satCoords"></div>
     </div>
@@ -438,19 +445,15 @@ function promptToken(){
 }
 
 /* ============ Satellite Feed (Leaflet + Esri) ============ */
-let satMap=null, satMarker=null;
-const planeIcon = () => L.divIcon({
-  className:'plane-marker',
-  html:'<svg width="30" height="30" viewBox="0 0 24 24" fill="#5ef2a0" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0011.5 2 1.5 1.5 0 0010 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>',
-  iconSize:[30,30], iconAnchor:[15,15]
-});
+let satMap=null;
 
 function initSatMap(){
   if(satMap) return;
   satMap = L.map('satmap',{
     zoomControl:false, attributionControl:true,
-    dragging:true, scrollWheelZoom:false, doubleClickZoom:true
-  }).setView([0,0],12);
+    dragging:false, scrollWheelZoom:false, doubleClickZoom:false,
+    touchZoom:false, boxZoom:false, keyboard:false
+  }).setView([0,0],11);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
     maxZoom:18, attribution:'Esri World Imagery'
   }).addTo(satMap);
@@ -461,13 +464,18 @@ function updateSatMap(a){
   if(a.lat==null||a.lon==null){ wrap.style.display="none"; lab.style.display="none"; return; }
   wrap.style.display="block"; lab.style.display="block";
   initSatMap();
-  // Leaflet muss nach dem Einblenden seine Größe neu berechnen
   setTimeout(()=>satMap.invalidateSize(),60);
+
   const ll=[a.lat,a.lon];
-  if(!satMarker){ satMarker=L.marker(ll,{icon:planeIcon(),rotationAngle:a.track||0}).addTo(satMap); }
-  else { satMarker.setLatLng(ll); }
-  // beim Öffnen zentrieren; Nutzer kann danach frei verschieben
+  // Flugzeug bleibt fix in der Mitte -> Karte folgt der Position
   if(!a._satCentered){ satMap.setView(ll,12); a._satCentered=true; }
+  else { satMap.panTo(ll,{animate:true,duration:0.5}); }
+
+  // Fixes Symbol in Flugrichtung drehen
+  if(a.track!=null){
+    $("satPlane").style.transform=`translate(-50%,-50%) rotate(${a.track}deg)`;
+  }
+
   $("satCoords").innerHTML=`${a.lat.toFixed(2)}° ${a.lat>=0?'N':'S'} &nbsp; ${a.lon.toFixed(2)}° ${a.lon>=0?'E':'W'}`;
 }
 
@@ -478,7 +486,6 @@ function setSatInset(src){
 }
 
 function resetSatMap(){
-  if(satMarker){ satMap.removeLayer(satMarker); satMarker=null; }
   setSatInset(null);
   $("satwrap").style.display="none"; $("satLab").style.display="none";
 }
