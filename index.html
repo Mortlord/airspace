@@ -358,10 +358,10 @@ let lastGoodTs=0;
 let consecutiveFails=0;
 
 // fetch mit Abbruch-Timeout, damit ein hängender Request den nächsten Takt nicht blockiert
-function fetchTimeout(url, ms=8000){
+function fetchTimeout(url, ms=8000, headers){
   const ctrl=new AbortController();
   const id=setTimeout(()=>ctrl.abort(), ms);
-  return fetch(url,{cache:"no-store",signal:ctrl.signal})
+  return fetch(url,{cache:"no-store",signal:ctrl.signal,headers})
     .finally(()=>clearTimeout(id));
 }
 
@@ -371,7 +371,7 @@ async function fetchData(){
 
     if(state.mode==="feeder"){
       if(!state.token){ promptToken(); return; }
-      const r=await fetchTimeout(`${BASE}/feeder?token=${encodeURIComponent(state.token)}`);
+      const r=await fetchTimeout(`${BASE}/feeder`, 8000, {"X-Auth-Token": state.token});
       if(r.status===403){ alert("Token ungültig oder kein Owner-Token."); switchMode("gps"); return; }
       if(!r.ok) throw new Error("HTTP "+r.status);
       const j=await r.json();
