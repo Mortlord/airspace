@@ -74,14 +74,6 @@
     letter-spacing:.16em;padding:0 26px;cursor:pointer;font-weight:600}
   .scanbtn:active{background:var(--green-faint)}
 
-  /* Mode switch (Feeder <-> GPS) */
-  .modeswitch{display:flex;gap:0;margin:4px 0 8px;border:1px solid var(--line);
-    border-radius:11px;overflow:hidden;background:var(--panel)}
-  .modeswitch button{flex:1;background:transparent;border:none;color:var(--txt-dim);
-    font-family:var(--mono);font-size:13px;letter-spacing:.14em;padding:13px 0;
-    cursor:pointer;text-transform:uppercase;transition:.15s}
-  .modeswitch button.active{background:var(--green-faint);color:var(--green)}
-
   /* Range buttons */
   .rangerow{display:flex;align-items:center;gap:10px;margin:22px 0 6px;flex-wrap:wrap}
   .rangerow .lbl{color:var(--txt-dim);font-size:13px;letter-spacing:.16em;
@@ -164,11 +156,6 @@
     <span id="clockLbl">--:--:--</span>
   </div>
 
-  <div class="modeswitch" id="modeswitch">
-    <button data-mode="gps" class="active">📍 GPS</button>
-    <button data-mode="feeder">📡 Feeder</button>
-  </div>
-
   <div class="searchrow">
     <input id="search" placeholder="CALLSIGN SUCHEN" autocomplete="off" spellcheck="false">
     <button class="scanbtn" id="scanbtn">SCAN</button>
@@ -206,16 +193,14 @@
 
 <script>
 /* ============ Konfiguration ============ */
-const BASE = "https://web-production-a6fc8.up.railway.app";
+const BASE = "https://api.adsb-radar.de";
 const LS = {
   get:(k,d)=>{try{const v=localStorage.getItem("asl_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
   set:(k,v)=>{try{localStorage.setItem("asl_"+k,JSON.stringify(v))}catch(e){}}
 };
 
 let state = {
-  mode:   LS.get("mode","gps"),       // "gps" | "feeder"
   radius: LS.get("radius",25),
-  token:  LS.get("token",""),         // Owner-Token (für Feeder-Modus)
   mil:    LS.get("mil",false),
   labels: LS.get("labels",false),
   center: null,                       // {lat,lon}
@@ -369,25 +354,14 @@ async function fetchData(){
   try{
     let center, list;
 
-    if(state.mode==="feeder"){
-      if(!state.token){ promptToken(); return; }
-      const r=await fetchTimeout(`${BASE}/feeder`, 8000, {"X-Auth-Token": state.token});
-      if(r.status===403){ alert("Token ungültig oder kein Owner-Token."); switchMode("gps"); return; }
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      const j=await r.json();
-      if(!j.ok) throw new Error("feeder not ok");
-      center={lat:j.lat,lon:j.lon};
-      list=(j.aircraft||[]).map(normalizeRaw);
-    } else {
-      if(!state.center){ return; } // wartet auf GPS-Fix
-      const {lat,lon}=state.center;
-      const r=await fetchTimeout(`${BASE}/aircraft?lat=${lat}&lon=${lon}&radius=${state.radius}`);
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      const j=await r.json();
-      if(!Array.isArray(j.ac)) throw new Error("malformed response"); // kein gültiges Datenpaket -> alte Daten behalten
-      center={lat,lon};
-      list=j.ac.map(normalizeRaw);
-    }
+    if(!state.center){ return; } // wartet auf GPS-Fix
+    const {lat,lon}=state.center;
+    const r=await fetchTimeout(`${BASE}/aircraft?lat=${lat}&lon=${lon}&radius=${state.radius}`);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    if(!Array.isArray(j.ac)) throw new Error("malformed response"); // kein gültiges Datenpaket -> alte Daten behalten
+    center={lat,lon};
+    list=j.ac.map(normalizeRaw);
 
     // Erfolg: Daten übernehmen
     if(center) state.center=center;
@@ -461,21 +435,6 @@ function stopGps(){
   if(gpsWatch!==null){ navigator.geolocation.clearWatch(gpsWatch); gpsWatch=null; }
 }
 
-/* ============ Modus-Umschaltung ============ */
-function switchMode(mode){
-  state.mode=mode; LS.set("mode",mode);
-  document.querySelectorAll("#modeswitch button").forEach(b=>
-    b.classList.toggle("active", b.dataset.mode===mode));
-  state.center=null; state.aircraft=[]; consecutiveFails=0; setStale(false); updateCounts();
-  if(mode==="gps"){ startGps(); }
-  else { stopGps(); fetchData(); }
-}
-
-function promptToken(){
-  const t=prompt("Owner-Token für Feeder-Modus eingeben:", state.token||"");
-  if(t && t.trim()){ state.token=t.trim(); LS.set("token",state.token); fetchData(); }
-  else { switchMode("gps"); }
-}
 
 /* ============ Satellite Feed (Leaflet + Esri) ============ */
 let satMap=null;
@@ -659,9 +618,6 @@ function showInfobox(h){
 function hideInfobox(){ $("infobox").classList.remove("show"); }
 
 /* ============ UI-Verdrahtung ============ */
-document.querySelectorAll("#modeswitch button").forEach(b=>
-  b.onclick=()=>switchMode(b.dataset.mode));
-
 document.querySelectorAll(".rangerow button").forEach(b=>
   b.onclick=()=>{
     state.radius=+b.dataset.r; LS.set("radius",state.radius);
@@ -723,7 +679,7 @@ function resize(){ sizeCanvas(); }
 window.addEventListener("resize",resize);
 sizeCanvas();
 animate();
-switchMode(state.mode);        // initialer Modus (GPS default)
+startGps();                    // GPS ist jetzt der einzige Modus
 setInterval(fetchData, 2000);  // Refresh-Intervall
 </script>
 </body>
