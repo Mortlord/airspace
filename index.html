@@ -718,8 +718,18 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .status a{color:inherit}
 
   /* Radar */
-  .radar-wrap{position:relative;width:100%;aspect-ratio:1/1;margin:4px 0 8px}
-  #radar{width:100%;height:100%;display:block;touch-action:manipulation;cursor:pointer}
+  .radar-wrap{position:relative;width:100%;aspect-ratio:1/1;margin:4px 0 0}
+  #radar{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:2;
+    touch-action:manipulation;cursor:pointer}
+  /* Hintergrundkarte: auf den Radarkreis beschnitten, eigener Stapelkontext (Leaflet-Panes haben z-index 400) */
+  .bgmap,.bgmap-scrim{position:absolute;inset:0;clip-path:circle(45% at 50% 50%);pointer-events:none}
+  .bgmap{z-index:0;background:transparent}
+  .bgmap.leaflet-container{background:transparent}
+  /* Abdunkelung und Blaufärbung über den Kacheln (CSS-Filter auf Kacheln wirken unzuverlässig) */
+  .bgmap-scrim{z-index:1;background:rgba(15,27,45,.62)}
+  .bgmap.off,.bgmap-scrim.off{display:none}
+  .map-credit{margin:2px 0 8px;font-size:11px;color:var(--txt-dim);text-align:right;min-height:15px}
+  .map-credit.off{visibility:hidden}
 
   /* Suche */
   .search{display:block;width:100%;background:var(--surface);border:1px solid var(--line);
@@ -740,6 +750,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .toggle{display:flex;justify-content:space-between;align-items:center;gap:16px;
     margin-top:22px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
     font-size:17px;cursor:pointer}
+  .toggle-next{margin-top:0;border-top:0}
   .sw{width:44px;height:26px;border-radius:13px;background:var(--surface);border:1px solid var(--line);
     position:relative;flex:none;transition:background .15s}
   .sw::after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;
@@ -803,8 +814,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <p class="status" id="status" aria-live="polite">Warte auf Standort …</p>
 
   <div class="radar-wrap">
+    <div class="bgmap" id="bgmap" aria-hidden="true"></div>
+    <div class="bgmap-scrim" id="bgmapScrim" aria-hidden="true"></div>
     <canvas id="radar" aria-label="Radarbild der Flugzeuge im Umkreis"></canvas>
   </div>
+  <p class="map-credit" id="mapCredit">Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende</p>
 
   <input class="search" id="search" type="search" placeholder="Callsign oder Hex suchen"
          autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"
@@ -822,6 +836,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="toggle" id="toggleLabels">
     <span>Beschriftung für alle Flugzeuge</span>
     <span class="sw" id="swLabels" role="switch" aria-checked="false" tabindex="0"></span>
+  </div>
+  <div class="toggle toggle-next" id="toggleMap">
+    <span>Karte im Hintergrund</span>
+    <span class="sw" id="swMap" role="switch" aria-checked="false" tabindex="0"></span>
   </div>
 
   <nav class="foot">
@@ -864,6 +882,7 @@ const HIST_LEN = 5;     // Anzahl Historienpunkte je Flugzeug
 let state = {
   radius: LS.get("radius",25),
   labels: LS.get("labels",false),
+  bgmap:  LS.get("bgmap",true),
   center: null,                       // {lat,lon}
   aircraft: [],
   selected: null,
@@ -969,9 +988,12 @@ function drawRadar(){
   // Ausgewähltes Flugzeug zuletzt zeichnen (liegt oben)
   list.sort((p,q)=>(state.selected&&p.hex===state.selected.hex)-(state.selected&&q.hex===state.selected.hex));
 
+  const now=performance.now();
   for(const a of list){
     if(a.lat==null||a.lon==null) continue;
-    const [x,y,dist]=toXY(a.lat,a.lon);
+    // Anzeigeposition zwischen den Meldungen aus Kurs und Geschwindigkeit hochrechnen
+    const [plat,plon]=(a.posTs!=null) ? deadReckon({lat:a.lat,lon:a.lon,track:a.track,gs:a.gs,ts:a.posTs}, now) : [a.lat,a.lon];
+    const [x,y,dist]=toXY(plat,plon);
     if(dist>state.radius) continue;
     const brg=bearingDeg(state.center.lat,state.center.lon,a.lat,a.lon);
     const isSel=!!(state.selected && a.hex===state.selected.hex);
@@ -1152,7 +1174,7 @@ function startGps(){
   if(gpsWatch!==null) return;
   gpsWatch=navigator.geolocation.watchPosition(
     p=>{ state.gpsError=null; state.center={lat:p.coords.latitude,lon:p.coords.longitude};
-         updateCounts(); updateStatus(); requestDraw(); fetchData(); },
+         updateCounts(); updateStatus(); updateBgMap(); requestDraw(); fetchData(); },
     e=>{ console.warn("GPS:",e.message); state.gpsError=(e.code===1?1:2); updateStatus(); },
     {enableHighAccuracy:true,maximumAge:15000,timeout:27000}
   );
@@ -1376,7 +1398,7 @@ document.querySelectorAll(".seg button").forEach(b=>
   b.onclick=()=>{
     state.radius=+b.dataset.r; LS.set("radius",state.radius);
     document.querySelectorAll(".seg button").forEach(x=>x.classList.toggle("active",x===b));
-    updateCounts(); requestDraw(); fetchData();
+    updateCounts(); updateBgMap(); requestDraw(); fetchData();
   });
 
 $("search").addEventListener("input",e=>{ state.query=e.target.value.trim(); updateCounts(); requestDraw(); });
@@ -1385,15 +1407,56 @@ $("search").addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur();
 $("sheetClose").onclick=closeSheet;
 document.addEventListener("keydown",e=>{ if(e.key==="Escape" && $("sheet").classList.contains("open")) closeSheet(); });
 
-function bindToggle(rowId,swId,key){
+function bindToggle(rowId,swId,key,onChange){
   const sw=$(swId);
   const apply=()=>{ sw.classList.toggle("on",state[key]); sw.setAttribute("aria-checked",state[key]); };
-  const flip=()=>{ state[key]=!state[key]; LS.set(key,state[key]); apply(); requestDraw(); };
+  const flip=()=>{ state[key]=!state[key]; LS.set(key,state[key]); apply(); requestDraw(); if(onChange) onChange(); };
   apply();
   $(rowId).onclick=flip;
   sw.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); flip(); } });
 }
 bindToggle("toggleLabels","swLabels","labels");
+bindToggle("toggleMap","swMap","bgmap",()=>{ applyBgMapVisibility(); updateBgMap(true); });
+
+/* ============ Hintergrundkarte (Esri Dark Gray, maßstabsgleich zu den Ringen) ============ */
+let bgMap=null, bgMapCenter=null, bgMapRadius=null;
+
+function initBgMap(){
+  if(bgMap) return;
+  bgMap=L.map("bgmap",{
+    zoomControl:false, attributionControl:false,      // Quellenangabe steht unter dem Radar
+    dragging:false, scrollWheelZoom:false, doubleClickZoom:false, touchZoom:false,
+    boxZoom:false, keyboard:false,
+    zoomSnap:0, zoomAnimation:false, fadeAnimation:false, markerZoomAnimation:false, inertia:false
+  });
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",{
+    maxNativeZoom:16, maxZoom:18
+  }).addTo(bgMap);
+}
+
+// Zoom so wählen, dass der Außenring (45 % der Breite) genau dem Umkreis entspricht
+function bgZoom(lat){
+  const Rpx=cssSize*0.45;
+  if(!Rpx) return 9;
+  return Math.log2(156543.03392*Math.cos(toRad(lat))*Rpx/(state.radius*1852));
+}
+
+function applyBgMapVisibility(){
+  for(const id of ["bgmap","bgmapScrim","mapCredit"]) $(id).classList.toggle("off",!state.bgmap);
+}
+
+function updateBgMap(force){
+  if(!state.bgmap || !state.center || !window.L) return;
+  initBgMap();
+  const c=state.center;
+  // Nur bei spürbarer Bewegung (> 50 m) oder geändertem Umkreis neu setzen
+  const moved=!bgMapCenter || haversineNm(bgMapCenter.lat,bgMapCenter.lon,c.lat,c.lon)>0.027;
+  if(!force && !moved && bgMapRadius===state.radius) return;
+  bgMap.invalidateSize({pan:false});
+  bgMap.setView([c.lat,c.lon], bgZoom(c.lat), {animate:false});
+  bgMapCenter={...c}; bgMapRadius=state.radius;
+}
+applyBgMapVisibility();
 
 // Umkreis-Button initial markieren
 document.querySelectorAll(".seg button").forEach(b=>
@@ -1424,12 +1487,14 @@ if('serviceWorker' in navigator){
 }
 
 /* ============ Start ============ */
-window.addEventListener("resize",()=>{ sizeCanvas(); requestDraw(); });
+window.addEventListener("resize",()=>{ sizeCanvas(); updateBgMap(true); requestDraw(); });
 sizeCanvas();
 updateStatus();
 requestDraw();
 startGps();                    // GPS ist der einzige Modus
-setInterval(fetchData, 2000);  // Refresh-Intervall
+setInterval(fetchData, 2000);  // Datenabruf
+// Bewegung auf dem Radar: zweimal pro Sekunde neu zeichnen (hochgerechnete Positionen), nur bei sichtbarer Seite
+setInterval(()=>{ if(!document.hidden && state.center) requestDraw(); }, 500);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(requestDraw);
 </script>
 </body>

@@ -80,7 +80,7 @@
     <li><a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> und <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a>: Positionsdaten der Flugzeuge</li>
     <li><a href="https://www.adsbdb.com" target="_blank" rel="noopener">adsbdb.com</a> und <a href="https://aerodatabox.com" target="_blank" rel="noopener">AeroDataBox</a>: Routen- und Airline-Angaben</li>
     <li><a href="https://www.planespotters.net" target="_blank" rel="noopener">Planespotters.net</a>: Flugzeugfotos, jeweils mit Namen der Fotografin oder des Fotografen</li>
-    <li><a href="https://www.esri.com" target="_blank" rel="noopener">Esri World Imagery</a>: Satellitenbilder in der Detailansicht</li>
+    <li><a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>: Hintergrundkarte (Dark Gray Canvas; Kartendaten Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende) und Satellitenbilder in der Detailansicht (World Imagery; Esri, Maxar, Earthstar Geographics)</li>
   </ul>
 
   <h2 id="datenschutz">Datenschutz</h2>
@@ -95,7 +95,7 @@
   <ul>
     <li>Keine Cookies, kein Tracking, keine Webanalyse, kein Nutzerkonto.</li>
     <li>Dein Standort wird gebraucht, um die Flugzeuge um dich herum zu finden. Er geht dafür an den Server der App und wird dort nicht dauerhaft gespeichert.</li>
-    <li>Satellitenbilder und Flugzeugfotos lädt dein Browser direkt bei Esri und Planespotters. Diese Dienste sehen dabei deine IP-Adresse.</li>
+    <li>Kartenbilder und Flugzeugfotos lädt dein Browser direkt bei Esri und Planespotters. Diese Dienste sehen dabei deine IP-Adresse; Esri erkennt an der Hintergrundkarte außerdem ungefähr, wo du dich befindest. Die Hintergrundkarte lässt sich abschalten.</li>
     <li>Schriften und die Kartenbibliothek Leaflet liefert die App selbst aus. Dafür werden keine fremden Server angefragt.</li>
   </ul>
 
@@ -107,14 +107,19 @@
   <h3>Routenangaben</h3>
   <p>Wenn du ein Flugzeug antippst, fragt die App beim Betreiber-Server nach Abflug- und Zielflughafen zu dessen Callsign. Der Server beantwortet das aus seinem Zwischenspeicher oder über adsbdb.com bzw. AeroDataBox. Übermittelt wird dabei nur das Callsign des Flugzeugs, nicht dein Standort. Rechtsgrundlage ist das berechtigte Interesse am Betrieb der App (Art. 6 Abs. 1 lit. f DSGVO).</p>
 
-  <h3>Satellitenbilder (Esri)</h3>
-  <p>Die Detailansicht zeigt Satellitenbilder aus dem Dienst World Imagery der Environmental Systems Research Institute, Inc. (Esri), Redlands, USA. Die Kartenkacheln lädt dein Browser direkt von Esri. Dabei erhält Esri technisch bedingt deine IP-Adresse und den angezeigten Kartenausschnitt, also die Umgebung des ausgewählten Flugzeugs, nicht deinen Standort. Esri ist nach dem EU-US Data Privacy Framework zertifiziert, auf das sich die Übermittlung in die USA stützt (Art. 45 DSGVO). Rechtsgrundlage ist das berechtigte Interesse an einer anschaulichen Darstellung (Art. 6 Abs. 1 lit. f DSGVO). Weitere Informationen: <a href="https://www.esri.com/de-de/privacy/privacy-statements/" target="_blank" rel="noopener">Datenschutzhinweise von Esri</a>.</p>
+  <h3>Karten (Esri)</h3>
+  <p>Die Karten stammen von der Environmental Systems Research Institute, Inc. (Esri), Redlands, USA. Die Kartenkacheln lädt dein Browser direkt von Esri. Dabei erhält Esri technisch bedingt deine IP-Adresse und den jeweils angezeigten Kartenausschnitt:</p>
+  <ul>
+    <li>Hintergrundkarte hinter dem Radar: Der Ausschnitt ist um deinen Standort zentriert. Esri kann daraus ungefähr ableiten, wo du dich befindest. Die Karte lässt sich in der App mit dem Schalter „Karte im Hintergrund“ abschalten; dann werden dafür keine Kacheln mehr geladen.</li>
+    <li>Satellitenbild in der Detailansicht: Der Ausschnitt zeigt die Umgebung des ausgewählten Flugzeugs, nicht deinen Standort.</li>
+  </ul>
+  <p> Esri ist nach dem EU-US Data Privacy Framework zertifiziert, auf das sich die Übermittlung in die USA stützt (Art. 45 DSGVO). Rechtsgrundlage ist das berechtigte Interesse an einer anschaulichen Darstellung (Art. 6 Abs. 1 lit. f DSGVO). Weitere Informationen: <a href="https://www.esri.com/de-de/privacy/privacy-statements/" target="_blank" rel="noopener">Datenschutzhinweise von Esri</a>.</p>
 
   <h3>Flugzeugfotos (Planespotters.net)</h3>
   <p>Hat ein ausgewähltes Flugzeug ein bekanntes Kennzeichen, fragt dein Browser direkt bei Planespotters.net nach einem Foto und lädt es von dort. Planespotters erhält dabei deine IP-Adresse und das Kennzeichen des Flugzeugs. Rechtsgrundlage ist das berechtigte Interesse an einer anschaulichen Darstellung (Art. 6 Abs. 1 lit. f DSGVO). Weitere Informationen: <a href="https://www.planespotters.net/legal/privacypolicy/de" target="_blank" rel="noopener">Datenschutzhinweise von Planespotters.net</a>.</p>
 
   <h3>Einstellungen im Browser</h3>
-  <p>Den gewählten Umkreis und die Einstellung für Beschriftungen speichert die App im lokalen Speicher deines Browsers (localStorage). Diese Angaben verlassen dein Gerät nicht. Du kannst sie jederzeit über die Browsereinstellungen löschen. Die Speicherung ist für die gewünschte Funktion erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG).</p>
+  <p>Den gewählten Umkreis und die Einstellungen für Beschriftungen und Hintergrundkarte speichert die App im lokalen Speicher deines Browsers (localStorage). Diese Angaben verlassen dein Gerät nicht. Du kannst sie jederzeit über die Browsereinstellungen löschen. Die Speicherung ist für die gewünschte Funktion erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG).</p>
 
   <h3>Reichweitenmessung</h3>
   <p>Um die ungefähre Nutzung abschätzen zu können, zählt der Betreiber-Server unterschiedliche Besucher innerhalb eines Tages. Die IP-Adresse wird dafür nicht gespeichert. Der Server bildet aus ihr mit einem täglich wechselnden Zufallswert einen nicht umkehrbaren Hashwert, der nach 24 Stunden gelöscht wird. Ein Rückschluss auf einzelne Personen ist damit nicht möglich. Rechtsgrundlage ist das berechtigte Interesse an einer datensparsamen Reichweitenmessung (Art. 6 Abs. 1 lit. f DSGVO).</p>
