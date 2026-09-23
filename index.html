@@ -721,13 +721,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .radar-wrap{position:relative;width:100%;aspect-ratio:1/1;margin:4px 0 0}
   #radar{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:2;
     touch-action:manipulation;cursor:pointer}
-  /* Hintergrundkarte: auf den Radarkreis beschnitten, eigener Stapelkontext (Leaflet-Panes haben z-index 400) */
-  .bgmap,.bgmap-scrim{position:absolute;inset:0;clip-path:circle(45% at 50% 50%);pointer-events:none}
-  .bgmap{z-index:0;background:transparent}
+  /* Hintergrundkarte: auf den Radarkreis beschnitten, eigener Stapelkontext (Leaflet-Panes haben z-index 400).
+     Schichtung innerhalb der Karte: Grundkarte (200) -> Abdunkelung (250) -> Ortsnamen (260) */
+  .bgmap{position:absolute;inset:0;z-index:0;clip-path:circle(45% at 50% 50%);pointer-events:none}
   .bgmap.leaflet-container{background:transparent}
-  /* Abdunkelung und Blaufärbung über den Kacheln (CSS-Filter auf Kacheln wirken unzuverlässig) */
-  .bgmap-scrim{z-index:1;background:rgba(15,27,45,.62)}
-  .bgmap.off,.bgmap-scrim.off{display:none}
+  .bgmap.off{display:none}
   .map-credit{margin:2px 0 8px;font-size:11px;color:var(--txt-dim);text-align:right;min-height:15px}
   .map-credit.off{visibility:hidden}
 
@@ -815,7 +813,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <div class="radar-wrap">
     <div class="bgmap" id="bgmap" aria-hidden="true"></div>
-    <div class="bgmap-scrim" id="bgmapScrim" aria-hidden="true"></div>
     <canvas id="radar" aria-label="Radarbild der Flugzeuge im Umkreis"></canvas>
   </div>
   <p class="map-credit" id="mapCredit">Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende</p>
@@ -1432,6 +1429,20 @@ function initBgMap(){
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",{
     maxNativeZoom:16, maxZoom:18
   }).addTo(bgMap);
+
+  // Abdunkelung und Blaufärbung ZWISCHEN Grundkarte und Ortsnamen, damit die Namen lesbar bleiben
+  // (CSS-Filter auf Kacheln wirken unzuverlässig; ein Scrim über dem ganzen Container würde auch die Namen abdunkeln)
+  bgMap.createPane("scrim").style.zIndex=250;
+  bgMap.createPane("labels").style.zIndex=260;
+  L.rectangle([[-85,-180],[85,180]],{
+    pane:"scrim", renderer:L.svg({pane:"scrim"}), interactive:false,
+    stroke:false, fillColor:"#0F1B2D", fillOpacity:.62
+  }).addTo(bgMap);
+
+  // Ortsnamen (Städte, Gewässer, Grenzen) aus Esris Referenz-Layer
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",{
+    pane:"labels", maxNativeZoom:16, maxZoom:18, opacity:.75
+  }).addTo(bgMap);
 }
 
 // Zoom so wählen, dass der Außenring (45 % der Breite) genau dem Umkreis entspricht
@@ -1442,7 +1453,7 @@ function bgZoom(lat){
 }
 
 function applyBgMapVisibility(){
-  for(const id of ["bgmap","bgmapScrim","mapCredit"]) $(id).classList.toggle("off",!state.bgmap);
+  for(const id of ["bgmap","mapCredit"]) $(id).classList.toggle("off",!state.bgmap);
 }
 
 function updateBgMap(force){
