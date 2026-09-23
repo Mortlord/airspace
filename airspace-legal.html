@@ -79,6 +79,7 @@
   <ul>
     <li><a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> und <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a>: Positionsdaten der Flugzeuge</li>
     <li><a href="https://www.adsbdb.com" target="_blank" rel="noopener">adsbdb.com</a> und <a href="https://aerodatabox.com" target="_blank" rel="noopener">AeroDataBox</a>: Routen- und Airline-Angaben</li>
+    <li><a href="https://www.geonames.org" target="_blank" rel="noopener">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>): Ortsnamen auf dem Radar, als Datei von der App selbst ausgeliefert</li>
     <li><a href="https://www.planespotters.net" target="_blank" rel="noopener">Planespotters.net</a>: Flugzeugfotos, jeweils mit Namen der Fotografin oder des Fotografen</li>
     <li><a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>: Hintergrundkarte (Dark Gray Canvas; Kartendaten Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende) und Satellitenbilder in der Detailansicht (World Imagery; Esri, Maxar, Earthstar Geographics)</li>
   </ul>
@@ -107,10 +108,13 @@
   <h3>Routenangaben</h3>
   <p>Wenn du ein Flugzeug antippst, fragt die App beim Betreiber-Server nach Abflug- und Zielflughafen zu dessen Callsign. Der Server beantwortet das aus seinem Zwischenspeicher oder über adsbdb.com bzw. AeroDataBox. Übermittelt wird dabei nur das Callsign des Flugzeugs, nicht dein Standort. Rechtsgrundlage ist das berechtigte Interesse am Betrieb der App (Art. 6 Abs. 1 lit. f DSGVO).</p>
 
+  <h3>Weltweite Suche nach Callsign</h3>
+  <p>Findet die Suche ein Callsign nicht im eingestellten Umkreis, fragt die App den Betreiber-Server nach diesem Callsign. Der Server sucht es bei adsb.fi, ersatzweise bei adsb.lol. Übermittelt wird dabei nur das gesuchte Callsign, nicht dein Standort. Solange du ein Flugzeug verfolgst, wiederholt die App diese Abfrage etwa alle zwei Sekunden und fragt keine Flugzeuge um deinen Standort ab. Rechtsgrundlage ist das berechtigte Interesse am Betrieb der App (Art. 6 Abs. 1 lit. f DSGVO).</p>
+
   <h3>Karten (Esri)</h3>
   <p>Die Karten stammen von der Environmental Systems Research Institute, Inc. (Esri), Redlands, USA. Die Kartenkacheln lädt dein Browser direkt von Esri. Dabei erhält Esri technisch bedingt deine IP-Adresse und den jeweils angezeigten Kartenausschnitt:</p>
   <ul>
-    <li>Hintergrundkarte hinter dem Radar: Der Ausschnitt ist um deinen Standort zentriert. Esri kann daraus ungefähr ableiten, wo du dich befindest. Die Karte lässt sich in der App mit dem Schalter „Karte im Hintergrund“ abschalten; dann werden dafür keine Kacheln mehr geladen.</li>
+    <li>Hintergrundkarte hinter dem Radar: Der Ausschnitt ist um deinen Standort zentriert, beim Verfolgen eines Flugzeugs um dessen Position. Esri kann daraus ungefähr ableiten, wo du dich befindest. Die Karte lässt sich in der App mit dem Schalter „Karte im Hintergrund“ abschalten; dann werden dafür keine Kacheln mehr geladen.</li>
     <li>Satellitenbild in der Detailansicht: Der Ausschnitt zeigt die Umgebung des ausgewählten Flugzeugs, nicht deinen Standort.</li>
   </ul>
   <p> Esri ist nach dem EU-US Data Privacy Framework zertifiziert, auf das sich die Übermittlung in die USA stützt (Art. 45 DSGVO). Rechtsgrundlage ist das berechtigte Interesse an einer anschaulichen Darstellung (Art. 6 Abs. 1 lit. f DSGVO). Weitere Informationen: <a href="https://www.esri.com/de-de/privacy/privacy-statements/" target="_blank" rel="noopener">Datenschutzhinweise von Esri</a>.</p>
