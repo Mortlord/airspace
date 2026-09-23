@@ -350,6 +350,27 @@ function fetchTimeout(url, ms=8000, headers){
     .finally(()=>clearTimeout(id));
 }
 
+// Zeitstempel je Position: Wann galt diese Position tatsächlich?
+// Wird nur gesetzt, wenn sich lat/lon für ein Flugzeug ändert. Unveränderte (gecachte) Positionen
+// behalten ihren ursprünglichen Zeitstempel, damit die Hochrechnung nicht vom Klick- oder Poll-Zeitpunkt abhängt.
+const posMemo=new Map(); // hex -> { lat, lon, ts }
+function stampPositions(list){
+  const now=performance.now();
+  for(const a of list){
+    if(a.lat==null||a.lon==null) continue;
+    const prev=posMemo.get(a.hex);
+    if(prev && prev.lat===a.lat && prev.lon===a.lon){
+      a.posTs=prev.ts;
+    } else {
+      const age=(a.seenPos!=null && a.seenPos>=0 && a.seenPos<60) ? a.seenPos : 0;
+      a.posTs=now-age*1000;
+      posMemo.set(a.hex,{lat:a.lat,lon:a.lon,ts:a.posTs});
+    }
+  }
+  // alte Einträge aufräumen (länger als 5 min ohne neue Position)
+  for(const [hex,m] of posMemo){ if(now-m.ts>300000) posMemo.delete(hex); }
+}
+
 async function fetchData(){
   try{
     let center, list;
@@ -362,6 +383,7 @@ async function fetchData(){
     if(!Array.isArray(j.ac)) throw new Error("malformed response"); // kein gültiges Datenpaket -> alte Daten behalten
     center={lat,lon};
     list=j.ac.map(normalizeRaw);
+    stampPositions(list);
 
     // Erfolg: Daten übernehmen
     if(center) state.center=center;
@@ -463,9 +485,10 @@ function updateSatMap(a){
   wrap.style.display="block"; lab.style.display="block";
   initSatMap();
 
-  // Positionsalter berücksichtigen: Anker auf den Zeitpunkt zurückdatieren, zu dem die Position galt
-  const age=(a.seenPos!=null && a.seenPos>=0 && a.seenPos<60) ? a.seenPos : 0;
-  const anchor={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:performance.now()-age*1000 };
+  // Anker mit dem Zeitpunkt, zu dem die Position tatsächlich galt (aus stampPositions),
+  // NICHT mit dem Klickzeitpunkt: sonst liegt der erste Anker um die Verweildauer der Daten zurück
+  // und die Karte springt beim ersten echten Positionsupdate weit nach vorn.
+  const anchor={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:(a.posTs!=null ? a.posTs : performance.now()) };
 
   if(!a._satCentered){
     // Erstes Einblenden: Größe neu messen, dann hart auf Position setzen
@@ -475,7 +498,7 @@ function updateSatMap(a){
     a._satCentered=true;
     satTarget=anchor;
     startSatAnim();
-  } else if(!satTarget || satTarget.lat!==a.lat || satTarget.lon!==a.lon){
+  } else if(!satTarget || satTarget.ts!==anchor.ts || satTarget.lat!==a.lat || satTarget.lon!==a.lon){
     // Nur bei TATSÄCHLICH neuer Position neu ankern.
     // Unveränderte Position (Server-/Quellen-Cache) darf den Anker nicht auf "jetzt" zurücksetzen,
     // sonst springt die Karte alle 2 s auf denselben alten Punkt zurück.
