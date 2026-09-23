@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F1B2D">
+  <title>Impressum und Datenschutz | AirSpace Live</title>
+  <style>
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:400;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-400.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:600;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-600.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:700;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-700.woff2') format('woff2')}
+    :root{
+      --bg:#0F1B2D; --surface:#16263D; --line:#2A3D57;
+      --txt:#D3DCE8; --txt-dim:#8193AB; --sel:#D9A441;
+      --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0 auto;max-width:40rem;color:var(--txt);font-family:var(--font);
+      font-size:18px;line-height:1.55;font-variant-numeric:tabular-nums;
+      padding:calc(env(safe-area-inset-top) + 20px) 22px calc(env(safe-area-inset-bottom) + 48px)}
+    a{color:var(--txt);text-decoration-color:var(--txt-dim);text-underline-offset:2px}
+    a:hover{text-decoration-color:var(--txt)}
+    :focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+    .back{display:inline-flex;align-items:center;gap:6px;color:var(--txt-dim);text-decoration:none;font-size:16px}
+    .back:hover{color:var(--txt)}
+    h1{font-size:32px;font-weight:700;line-height:1.15;margin:28px 0 8px}
+    .lead{color:var(--txt-dim);margin:0 0 28px}
+    .toc{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 8px;font-size:16px}
+    .toc a{color:var(--txt-dim)}
+    h2{font-size:24px;font-weight:700;margin:44px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+    h3{font-size:19px;font-weight:600;margin:26px 0 6px}
+    p,ul,dl{margin:0 0 12px}
+    ul{padding-left:1.2em}
+    li{margin:0 0 4px}
+    li::marker{color:var(--txt-dim)}
+    address{font-style:normal;margin:0 0 12px}
+    .note{color:var(--txt-dim);font-size:16px}
+    .legend{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center;margin:8px 0 16px}
+    .legend svg{display:block}
+    kbd{font-family:inherit;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:0 5px}
+    footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--txt-dim);font-size:15px;
+      display:flex;flex-wrap:wrap;gap:6px 20px}
+    footer a{color:var(--txt-dim)}
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+    Zurück zum Radar
+  </a>
+
+  <h1>Impressum und Datenschutz</h1>
+  <p class="lead">AirSpace Live ist ein privates, nicht-kommerzielles Hobbyprojekt. Diese Seite erklärt, wer dahintersteht und welche Daten beim Benutzen der App wohin fließen.</p>
+  <nav class="toc" aria-label="Inhalt">
+    <a href="#impressum">Impressum</a>
+    <a href="#datenschutz">Datenschutz</a>
+    <a href="#rechte">Deine Rechte</a>
+  </nav>
+
+  <h2 id="impressum">Impressum</h2>
+  <h3>Angaben gemäß § 5 DDG</h3>
+  <address>
+    M. Staaden<br>
+    Kaiser-Joseph-Straße 254<br>
+    79098 Freiburg im Breisgau<br>
+    Deutschland<br>
+    E-Mail: <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>
+  </address>
+
+  <h3>Haftung für Inhalte</h3>
+  <p>Die angezeigten Flugdaten stammen aus öffentlich empfangbaren ADS-B-Signalen, die von Drittanbietern gesammelt werden. Sie werden ohne Gewähr für Vollständigkeit, Richtigkeit oder Aktualität dargestellt. Die App ist nicht für Navigation oder andere sicherheitskritische Zwecke gedacht.</p>
+
+  <h3>Datenquellen</h3>
+  <p>Auf die Inhalte dieser Dienste hat der Betreiber keinen Einfluss:</p>
+  <ul>
+    <li><a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> und <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a>: Positionsdaten der Flugzeuge</li>
+    <li><a href="https://www.adsbdb.com" target="_blank" rel="noopener">adsbdb.com</a> und <a href="https://aerodatabox.com" target="_blank" rel="noopener">AeroDataBox</a>: Routen- und Airline-Angaben</li>
+    <li><a href="https://www.planespotters.net" target="_blank" rel="noopener">Planespotters.net</a>: Flugzeugfotos, jeweils mit Namen der Fotografin oder des Fotografen</li>
+    <li><a href="https://www.esri.com" target="_blank" rel="noopener">Esri World Imagery</a>: Satellitenbilder in der Detailansicht</li>
+  </ul>
+
+  <h2 id="datenschutz">Datenschutz</h2>
+
+  <h3>Verantwortlicher</h3>
+  <address>
+    M. Staaden, Kaiser-Joseph-Straße 254, 79098 Freiburg im Breisgau<br>
+    E-Mail: <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>
+  </address>
+
+  <h3>Das Wichtigste in Kürze</h3>
+  <ul>
+    <li>Keine Cookies, kein Tracking, keine Webanalyse, kein Nutzerkonto.</li>
+    <li>Dein Standort wird gebraucht, um die Flugzeuge um dich herum zu finden. Er geht dafür an den Server der App und wird dort nicht dauerhaft gespeichert.</li>
+    <li>Satellitenbilder und Flugzeugfotos lädt dein Browser direkt bei Esri und Planespotters. Diese Dienste sehen dabei deine IP-Adresse.</li>
+    <li>Schriften und die Kartenbibliothek Leaflet liefert die App selbst aus. Dafür werden keine fremden Server angefragt.</li>
+  </ul>
+
+  <h3>Standort</h3>
+  <p>Beim Start fragt die App über deinen Browser nach der Standortfreigabe. Solange die App geöffnet ist, sendet sie deine Koordinaten etwa alle zwei Sekunden zusammen mit dem eingestellten Umkreis an den Betreiber-Server (api.adsb-radar.de). Der Server fragt damit bei adsb.fi, ersatzweise bei adsb.lol, die Flugzeuge in diesem Umkreis ab. Dabei werden die Koordinaten an diese Dienste weitergegeben, deine IP-Adresse jedoch nicht, weil die Anfrage vom Server und nicht von deinem Gerät kommt.</p>
+  <p>Die Koordinaten werden nur für die Beantwortung der jeweiligen Anfrage verwendet und nicht dauerhaft gespeichert. Ohne Standortfreigabe zeigt die App keine Flugzeuge an.</p>
+  <p>Rechtsgrundlage ist deine Einwilligung über die Standortabfrage des Browsers (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG). Du kannst sie jederzeit in den Einstellungen deines Browsers oder Geräts widerrufen; die bis dahin erfolgte Verarbeitung bleibt davon unberührt.</p>
+
+  <h3>Routenangaben</h3>
+  <p>Wenn du ein Flugzeug antippst, fragt die App beim Betreiber-Server nach Abflug- und Zielflughafen zu dessen Callsign. Der Server beantwortet das aus seinem Zwischenspeicher oder über adsbdb.com bzw. AeroDataBox. Übermittelt wird dabei nur das Callsign des Flugzeugs, nicht dein Standort. Rechtsgrundlage ist das berechtigte Interesse am Betrieb der App (Art. 6 Abs. 1 lit. f DSGVO).</p>
+
+  <h3>Satellitenbilder (Esri)</h3>
+  <p>Die Detailansicht zeigt Satellitenbilder aus dem Dienst World Imagery der Environmental Systems Research Institute, Inc. (Esri), Redlands, USA. Die Kartenkacheln lädt dein Browser direkt von Esri. Dabei erhält Esri technisch bedingt deine IP-Adresse und den angezeigten Kartenausschnitt, also die Umgebung des ausgewählten Flugzeugs, nicht deinen Standort. Esri ist nach dem EU-US Data Privacy Framework zertifiziert, auf das sich die Übermittlung in die USA stützt (Art. 45 DSGVO). Rechtsgrundlage ist das berechtigte Interesse an einer anschaulichen Darstellung (Art. 6 Abs. 1 lit. f DSGVO). Weitere Informationen: <a href="https://www.esri.com/de-de/privacy/privacy-statements/" target="_blank" rel="noopener">Datenschutzhinweise von Esri</a>.</p>
+
+  <h3>Flugzeugfotos (Planespotters.net)</h3>
+  <p>Hat ein ausgewähltes Flugzeug ein bekanntes Kennzeichen, fragt dein Browser direkt bei Planespotters.net nach einem Foto und lädt es von dort. Planespotters erhält dabei deine IP-Adresse und das Kennzeichen des Flugzeugs. Rechtsgrundlage ist das berechtigte Interesse an einer anschaulichen Darstellung (Art. 6 Abs. 1 lit. f DSGVO). Weitere Informationen: <a href="https://www.planespotters.net/legal/privacypolicy/de" target="_blank" rel="noopener">Datenschutzhinweise von Planespotters.net</a>.</p>
+
+  <h3>Einstellungen im Browser</h3>
+  <p>Den gewählten Umkreis und die Einstellung für Beschriftungen speichert die App im lokalen Speicher deines Browsers (localStorage). Diese Angaben verlassen dein Gerät nicht. Du kannst sie jederzeit über die Browsereinstellungen löschen. Die Speicherung ist für die gewünschte Funktion erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG).</p>
+
+  <h3>Reichweitenmessung</h3>
+  <p>Um die ungefähre Nutzung abschätzen zu können, zählt der Betreiber-Server unterschiedliche Besucher innerhalb eines Tages. Die IP-Adresse wird dafür nicht gespeichert. Der Server bildet aus ihr mit einem täglich wechselnden Zufallswert einen nicht umkehrbaren Hashwert, der nach 24 Stunden gelöscht wird. Ein Rückschluss auf einzelne Personen ist damit nicht möglich. Rechtsgrundlage ist das berechtigte Interesse an einer datensparsamen Reichweitenmessung (Art. 6 Abs. 1 lit. f DSGVO).</p>
+
+  <h3>Server, Hosting und Übertragung</h3>
+  <p>Jede Anfrage an den Betreiber-Server enthält technisch bedingt deine IP-Adresse. Der Server nutzt sie nur kurzzeitig, um die Anfrage zu beantworten und Überlastung durch zu viele Anfragen abzuwehren, und speichert sie nicht dauerhaft.</p>
+  <p>Der Betreiber-Server läuft bei Railway Corp., San Francisco, USA. Die App selbst wird über GitHub Pages (GitHub, Inc., San Francisco, USA) ausgeliefert. Vor beiden ist Cloudflare, Inc., San Francisco, USA, als Proxy für DNS, Sicherheit und Performance geschaltet. Diese Anbieter verarbeiten technisch bedingt deine IP-Adresse und können Server-Protokolle anlegen. Die Übermittlung in die USA stützt sich auf Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO) bzw., soweit der Anbieter zertifiziert ist, auf das EU-US Data Privacy Framework (Art. 45 DSGVO). Rechtsgrundlage ist das berechtigte Interesse am sicheren technischen Betrieb (Art. 6 Abs. 1 lit. f DSGVO).</p>
+  <p class="note">Weitere Informationen: <a href="https://railway.com/legal/privacy" target="_blank" rel="noopener">Railway</a>, <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub</a>, <a href="https://www.cloudflare.com/de-de/privacypolicy/" target="_blank" rel="noopener">Cloudflare</a>.</p>
+
+  <h2 id="rechte">Deine Rechte</h2>
+  <p>Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21). Da die App keine Nutzerdaten dauerhaft speichert, liegen dem Betreiber in der Regel keine Daten vor, die er dir zuordnen könnte. Anfragen gerne an <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>.</p>
+  <p>Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren (Art. 77 DSGVO). Zuständig ist der <a href="https://www.baden-wuerttemberg.datenschutz.de" target="_blank" rel="noopener">Landesbeauftragte für den Datenschutz und die Informationsfreiheit Baden-Württemberg</a>.</p>
+
+  <footer>
+    <span>Stand: September 2026</span>
+    <a href="airspace-help.html">Hilfe</a>
+    <a href="index.html">Zum Radar</a>
+  </footer>
+</body>
+</html>
