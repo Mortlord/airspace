@@ -8,7 +8,7 @@ Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort z
 - **Flugzeuge wie auf dem Lotsenschirm:** Zielsymbol, Historienpunkte der letzten Positionen, Vektor bis zur Position in einer Minute, Helligkeit nach Flughöhe. Optional Datenblock mit Callsign, Flugfläche und Geschwindigkeit.
 - **Flüssige Bewegung:** Zwischen zwei Positionsmeldungen rechnet die App Kurs und Geschwindigkeit weiter und zeichnet zweimal pro Sekunde neu.
 - **Suche** nach Callsign oder Hex-Kennung (Teiltreffer genügen); Nicht-Treffer werden gedimmt.
-- **Weltweite Verfolgung:** Liegt ein vollständiges Callsign nicht im Umkreis, springt das Radar zum Flugzeug, zeigt nur dieses und folgt ihm; ein Button führt zurück zum eigenen Standort.
+- **Weltweite Verfolgung:** Liegt ein vollständiges Callsign oder eine Flugnummer (VN10 wird zu HVN10) nicht im Umkreis, springt das Radar zum Flugzeug, zeigt nur dieses und folgt ihm; ein Button führt zurück zum eigenen Standort.
 - **Umkreis** 5, 10, 25, 50 oder 100 NM.
 - **Detailansicht** beim Antippen eines Flugzeugs: Satellitenbild (Esri World Imagery), das dem Flugzeug folgt, Foto von Planespotters mit Nennung der Fotografin oder des Fotografen, Route, Muster, Kennzeichen, Höhe, Geschwindigkeit, Entfernung und Richtung.
 - **Robuste Datenabfrage:** Bei Netzaussetzern bleiben die letzten gültigen Daten stehen; erst nach drei Fehlern in Folge zeigt die Statuszeile „Keine Verbindung“.
@@ -54,7 +54,7 @@ Im `localStorage` des Browsers (Präfix `asl_`) liegen nur Umkreis sowie die Sch
 | Endpoint | Zweck |
 |----------|-------|
 | `GET /aircraft?lat=&lon=&radius=` | Flugzeuge im Umkreis des Standorts, Abruf alle 2 Sekunden |
-| `GET /callsign?cs=` | Weltweite Suche und Verfolgung eines Callsigns, nur exakte Treffer mit Position |
+| `GET /callsign?cs=` | Weltweite Suche und Verfolgung eines Callsigns oder einer IATA-Flugnummer (Zuordnung aus den VRS-Stammdaten), nur exakte Treffer mit Position |
 | `GET /route?callsign=` | Abflug- und Zielflughafen, serverseitig zwischengespeichert |
 | `GET /airlines`, `GET /aircrafttypes` | Namen für Airline-Kürzel und Mustercodes in der Detailansicht |
 

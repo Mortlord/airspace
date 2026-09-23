@@ -1304,7 +1304,7 @@ function inRange(){
 }
 
 function updateCounts(){
-  if(state.track){ $("headline").textContent=`${state.track.cs} wird verfolgt`; return; }
+  if(state.track){ $("headline").textContent=`${state.track.label} wird verfolgt`; return; }
   if(!state.center){ $("headline").textContent="Flugzeuge im Umkreis"; return; }
   const n=inRange().length;
   $("headline").textContent = state.query
@@ -1449,8 +1449,8 @@ async function runSearch(){
   $("search").blur();
   if(!q) return;
   if(!state.track && inRange().length>0) return;
-  if(state.track && state.track.cs===q) return;
-  if(!/^[A-Z0-9]{2,8}$/.test(q)){ setNotice("Bitte ein vollständiges Callsign eingeben, z. B. DLH4AB."); return; }
+  if(state.track && (state.track.cs===q || state.track.label.startsWith(q+" "))) return;
+  if(!/^[A-Z0-9]{2,8}$/.test(q)){ setNotice("Bitte ein vollständiges Callsign oder eine Flugnummer eingeben, z. B. HVN10 oder VN10."); return; }
   setNotice(`Suche ${q} weltweit …`, 15000);
   try{
     const r=await fetchTimeout(`${BASE}/callsign?cs=${encodeURIComponent(q)}`);
@@ -1458,20 +1458,22 @@ async function runSearch(){
     const j=await r.json();
     const list=(Array.isArray(j.ac)?j.ac:[]).map(normalizeRaw).filter(a=>a.lat!=null&&a.lon!=null);
     if(!list.length){
-      setNotice(`${q} wurde nicht gefunden. Weltweit wird nur nach dem vollständigen Callsign gesucht.`);
+      setNotice(`${q} wurde nicht gefunden. Weltweit braucht es das vollständige Callsign oder die Flugnummer, z. B. HVN10 oder VN10.`);
       return;
     }
-    startTrack(q, list[0]);
+    // Der Server übersetzt Flugnummern (VN10) in ICAO-Callsigns (HVN10); verfolgt wird das echte Callsign
+    const cs=(list[0].flight||q).toUpperCase();
+    startTrack(cs, list[0], cs===q ? cs : `${q} (${cs})`);
   }catch(e){
     console.warn("Suche:",e.message);
     setNotice("Die weltweite Suche ist gerade nicht möglich. Bitte später erneut versuchen.");
   }
 }
 
-function startTrack(cs, a){
+function startTrack(cs, a, label){
   if($("sheet").classList.contains("open")) closeSheet();
   fetchGen++;
-  state.track={cs, hex:a.hex, lostSince:null};
+  state.track={cs, label:label||cs, hex:a.hex, lostSince:null};
   state.notice=null;
   const list=[a]; stampPositions(list);
   state.aircraft=list;
