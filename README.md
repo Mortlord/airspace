@@ -18,8 +18,9 @@ Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort z
 
 ```
 index.html             App (Leaflet, Icons und Manifest sind eingebettet)
-airspace-help.html     Hilfe
-airspace-legal.html    Impressum und Datenschutz
+help.html              Hilfe
+legal.html             Impressum und Datenschutz
+sw.js                  Abschalt-Service-Worker für Altbesucher der bisherigen öffentlichen App
 places.tsv             Ortsnamen ab 10.000 Einwohnern (GeoNames, CC BY 4.0), wird nur bei aktiver Karte geladen
 fonts/                 Barlow Semi Condensed 400/600/700 (SIL OFL, siehe fonts/OFL.txt)
 ```
@@ -30,7 +31,7 @@ Es gibt keinen Build-Schritt. Schriften, Ortsnamen und Kartenbibliothek werden s
 
 1. Alle Dateien samt `places.tsv` und Ordner `fonts/` in den Root dieses Repos legen.
 2. Unter **Settings → Pages**: *Deploy from a branch*, dann `main` und `/ (root)` wählen.
-3. Aufruf unter `https://<user>.github.io/<repo>/` bzw. der eigenen Domain.
+3. Aufruf unter `https://<user>.github.io/<repo>/` bzw. der eigenen Domain; derzeit vorübergehend unter [adsb-radar.de](https://adsb-radar.de), bis die öffentliche App zurückkehrt.
 
 ### Als App auf dem Smartphone
 

@@ -856,8 +856,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
 
   <nav class="foot">
-    <a href="airspace-help.html">Hilfe</a>
-    <a href="airspace-legal.html">Impressum &amp; Datenschutz</a>
+    <a href="help.html">Hilfe</a>
+    <a href="legal.html">Impressum &amp; Datenschutz</a>
   </nav>
 
   <!-- Detail-Sheet -->
@@ -1270,7 +1270,7 @@ function updateStatus(){
   }
   if(state.gpsError && !state.center){
     el.innerHTML = state.gpsError===1
-      ? `Standort ist nicht freigegeben. <a href="airspace-help.html#standort">So gibst du ihn frei</a>`
+      ? `Standort ist nicht freigegeben. <a href="help.html#standort">So gibst du ihn frei</a>`
       : "Standort konnte nicht ermittelt werden.";
   } else if(!state.center){
     el.textContent="Warte auf Standort …";

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F1B2D">
+  <title>Hilfe | AirSpace Live</title>
+  <style>
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:400;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-400.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:600;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-600.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:700;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-700.woff2') format('woff2')}
+    :root{
+      --bg:#0F1B2D; --surface:#16263D; --line:#2A3D57;
+      --txt:#D3DCE8; --txt-dim:#8193AB; --sel:#D9A441;
+      --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0 auto;max-width:40rem;color:var(--txt);font-family:var(--font);
+      font-size:18px;line-height:1.55;font-variant-numeric:tabular-nums;
+      padding:calc(env(safe-area-inset-top) + 20px) 22px calc(env(safe-area-inset-bottom) + 48px)}
+    a{color:var(--txt);text-decoration-color:var(--txt-dim);text-underline-offset:2px}
+    a:hover{text-decoration-color:var(--txt)}
+    :focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+    .back{display:inline-flex;align-items:center;gap:6px;color:var(--txt-dim);text-decoration:none;font-size:16px}
+    .back:hover{color:var(--txt)}
+    h1{font-size:32px;font-weight:700;line-height:1.15;margin:28px 0 8px}
+    .lead{color:var(--txt-dim);margin:0 0 28px}
+    .toc{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 8px;font-size:16px}
+    .toc a{color:var(--txt-dim)}
+    h2{font-size:24px;font-weight:700;margin:44px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+    h3{font-size:19px;font-weight:600;margin:26px 0 6px}
+    p,ul,dl{margin:0 0 12px}
+    ul{padding-left:1.2em}
+    li{margin:0 0 4px}
+    li::marker{color:var(--txt-dim)}
+    address{font-style:normal;margin:0 0 12px}
+    .note{color:var(--txt-dim);font-size:16px}
+    .legend{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center;margin:8px 0 16px}
+    .legend svg{display:block}
+    kbd{font-family:inherit;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:0 5px}
+    footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--txt-dim);font-size:15px;
+      display:flex;flex-wrap:wrap;gap:6px 20px}
+    footer a{color:var(--txt-dim)}
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+    Zurück zum Radar
+  </a>
+
+  <h1>So liest du das Radar</h1>
+  <p class="lead">AirSpace Live zeigt die Flugzeuge rund um deinen Standort, ähnlich wie ein Bildschirm in der Flugsicherung.</p>
+  <nav class="toc" aria-label="Inhalt">
+    <a href="#radar">Radar</a>
+    <a href="#details">Details</a>
+    <a href="#bedienung">Suche und Umkreis</a>
+    <a href="#standort">Standort</a>
+    <a href="#installieren">Installieren</a>
+    <a href="#fragen">Häufige Fragen</a>
+  </nav>
+
+  <h2 id="radar">Das Radarbild</h2>
+  <p>Du bist das kleine Kreuz in der Mitte. Norden ist immer oben. Die Ringe teilen den eingestellten Umkreis in fünf gleiche Abschnitte; die Zahlen an den Ringen geben die Entfernung in nautischen Meilen an (1 NM = 1,852 km).</p>
+  <p>Die Karte im Hintergrund ist maßstabsgetreu: Der Außenring liegt genau auf der eingestellten Entfernung. Dazu zeigt das Radar die Namen der größten Orte ab 10.000 Einwohnern, je nach Platz bis zu zwölf. Mit dem Schalter „Karte im Hintergrund“ blendest du sie aus, etwa um Datenvolumen zu sparen.</p>
+
+  <div class="legend">
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="17" y="11" width="6" height="6" fill="#E8EEF5"/><line x1="20" y1="14" x2="52" y2="6" stroke="#E8EEF5" stroke-width="1.2"/></svg>
+    <span>Ein Flugzeug. Die Linie zeigt, wo es in einer Minute sein wird. Je länger sie ist, desto schneller fliegt es.</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="4" cy="20" r="1.4" fill="rgba(232,238,245,.25)"/><circle cx="10" cy="18.5" r="1.4" fill="rgba(232,238,245,.4)"/><circle cx="16" cy="17" r="1.4" fill="rgba(232,238,245,.6)"/><rect x="21" y="12" width="6" height="6" fill="#E8EEF5"/></svg>
+    <span>Die Punkte dahinter sind die letzten gemeldeten Positionen. So erkennst du, ob ein Flugzeug geradeaus fliegt oder eine Kurve dreht.</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="8" y="11" width="6" height="6" fill="rgba(232,238,245,.5)"/><rect x="40" y="11" width="6" height="6" fill="#E8EEF5"/></svg>
+    <span>Die Helligkeit zeigt die Höhe: Tief fliegende Flugzeuge sind gedämpft, Flugzeuge in Reiseflughöhe leuchten hell.</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="20" y="11" width="8" height="8" fill="#D9A441"/></svg>
+    <span>Das Flugzeug, das du gerade angetippt hast.</span>
+  </div>
+
+  <h3>Beschriftung</h3>
+  <p>Neben einem Flugzeug steht auf Wunsch ein kleiner Datenblock:</p>
+  <ul>
+    <li>obere Zeile: das Callsign, also die Flugnummer im Funkverkehr, z. B. DLH4AB für einen Lufthansa-Flug. Fehlt es, steht dort die Hex-Kennung des Transponders.</li>
+    <li>untere Zeile: die Flugfläche und die Geschwindigkeit über Grund in Knoten. FL360 bedeutet 36.000 Fuß, GND heißt, das Flugzeug steht oder rollt am Boden.</li>
+  </ul>
+  <p>Mit dem Schalter „Beschriftung für alle Flugzeuge“ blendest du die Datenblöcke für alle ein. Ist er aus, siehst du nur den Block des ausgewählten Flugzeugs.</p>
+
+  <h2 id="details">Details zu einem Flugzeug</h2>
+  <p>Tippe auf ein Flugzeug, um die Details zu öffnen. Oben siehst du ein Satellitenbild, das dem Flugzeug folgt. Zwischen zwei Positionsmeldungen rechnet die App die Position aus Kurs und Geschwindigkeit weiter, damit sich das Bild gleichmäßig bewegt. Wenn verfügbar, erscheinen außerdem ein Foto des Flugzeugs, Abflug- und Zielflughafen, Muster, Kennzeichen und Höhe.</p>
+  <p>Routenangaben stammen aus Datenbanken und können bei Charter-, Fracht- oder Sonderflügen fehlen oder falsch sein.</p>
+
+  <h2 id="bedienung">Suche und Umkreis</h2>
+  <p>Das Suchfeld filtert nach Callsign oder Hex-Kennung. Es genügt ein Teil, z. B. „EZY“ für alle easyJet-Flüge. Treffer bleiben hell, alle anderen Flugzeuge werden gedimmt.</p>
+  <h3 id="weltweit">Flugzeuge weltweit finden</h3>
+  <p>Gibt es im Umkreis keinen Treffer, sucht die App nach dem Drücken von <kbd>Enter</kbd> bzw. „Suchen“ auf der Tastatur weltweit. Dafür braucht es das vollständige Callsign oder die Flugnummer; Teile genügen hier nicht.</p>
+  <p>Callsign und Flugnummer sind nicht dasselbe: Im Funkverkehr nutzen Airlines ein dreibuchstabiges Kürzel (HVN10 für Vietnam Airlines), auf Tickets steht das zweistellige (VN10). Die App versteht beides. Das klappt aber nur bei Airlines, deren Callsign der Flugnummer entspricht. Viele Airlines, etwa easyJet oder Ryanair, verwenden eigene Buchstaben-Zahlen-Kombinationen; dort hilft nur das Callsign, das z. B. Flugtracking-Seiten anzeigen.</p>
+  <p>Wird das Flugzeug gefunden, springt das Radar zu ihm und zeigt nur noch dieses eine Flugzeug in der Mitte, die Karte zieht mit. Oben steht, wie weit es von dir entfernt ist. Mit „Zurück zu meinem Standort“ kehrst du zum normalen Radar zurück. Verschwindet das Flugzeug aus dem Empfang, etwa nach der Landung, bleibt der letzte bekannte Stand stehen.</p>
+  <p>Den Umkreis wählst du zwischen 5 und 100 NM. Kleine Werte eignen sich, um Flugzeuge über dir zu erkennen, große Werte zeigen den Verkehr einer ganzen Region.</p>
+
+  <h2 id="standort">Standort freigeben</h2>
+  <p>Ohne deinen Standort weiß die App nicht, wo die Mitte des Radars ist. Wenn oben „Standort ist nicht freigegeben“ steht, hast du die Abfrage abgelehnt. So erlaubst du sie nachträglich:</p>
+  <h3>iPhone und iPad</h3>
+  <p>Einstellungen, dann Datenschutz &amp; Sicherheit, dann Ortungsdienste. Dort die Ortungsdienste einschalten und bei Safari-Websites „Beim Verwenden der App“ wählen. Danach die App neu laden.</p>
+  <h3>Android mit Chrome</h3>
+  <p>Auf das Symbol links neben der Adresse tippen, dann Berechtigungen, dann Standort erlauben. Bei einer installierten App geht es über die App-Info in den Android-Einstellungen.</p>
+  <h3>Computer</h3>
+  <p>Auf das Symbol links neben der Adresse klicken und den Standort für diese Seite zulassen. Ohne GPS schätzt der Browser den Standort über das WLAN; das kann einige hundert Meter danebenliegen.</p>
+
+  <h2 id="installieren">Als App installieren</h2>
+  <p>AirSpace Live lässt sich wie eine App auf den Startbildschirm legen und öffnet sich dann im Vollbild.</p>
+  <ul>
+    <li>iPhone und iPad (Safari): Teilen-Symbol antippen, dann „Zum Home-Bildschirm“.</li>
+    <li>Android (Chrome): Menü mit den drei Punkten, dann „App installieren“ oder „Zum Startbildschirm hinzufügen“.</li>
+  </ul>
+
+  <h2 id="fragen">Häufige Fragen</h2>
+  <h3>Warum fehlt ein Flugzeug, das ich am Himmel sehe?</h3>
+  <p>Die Daten stammen von freiwilligen Empfangsstationen, die die ADS-B-Signale der Flugzeuge auffangen. Nicht jede Gegend ist gleich gut abgedeckt, besonders in Bodennähe und in Tälern. Manche Flugzeuge senden zudem keine Position, etwa ältere Kleinflugzeuge oder viele Militärmaschinen.</p>
+  <h3>Wie aktuell sind die Positionen?</h3>
+  <p>Die App fragt alle zwei Sekunden neue Daten ab; die gemeldeten Positionen sind meist wenige Sekunden alt. Damit sich die Flugzeuge gleichmäßig bewegen, rechnet das Radar ihre Position zwischen zwei Meldungen aus Kurs und Geschwindigkeit weiter. In Kurven kann ein Flugzeug deshalb kurz neben seiner tatsächlichen Position stehen, bis die nächste Meldung kommt. Oben steht, wann zuletzt erfolgreich aktualisiert wurde.</p>
+  <h3>Was bedeutet „Keine Verbindung“?</h3>
+  <p>Mehrere Abfragen hintereinander sind fehlgeschlagen, etwa wegen schlechten Empfangs. Das Radar zeigt so lange den letzten bekannten Stand und aktualisiert sich von selbst, sobald die Verbindung wieder steht.</p>
+  <h3>Kann ich mich auf die Daten verlassen?</h3>
+  <p>Nein. AirSpace Live ist ein Hobbyprojekt und nicht für Navigation oder andere sicherheitskritische Zwecke gedacht.</p>
+
+  <p>Noch Fragen? Schreib an <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>.</p>
+
+  <footer>
+    <a href="legal.html">Impressum und Datenschutz</a>
+    <a href="index.html">Zum Radar</a>
+  </footer>
+</body>
+</html>
