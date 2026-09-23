@@ -393,6 +393,7 @@ function normalizeRaw(a){
     lat:a.lat, lon:a.lon,
     alt:(a.alt_baro!=null?a.alt_baro:a.alt_geom),
     gs:a.gs, track:a.track,
+    seenPos:(typeof a.seen_pos==="number"?a.seen_pos:null), // Alter der Position in Sekunden
     type:a.t, reg:a.r,
     mil:!!(a.dbFlags&1)
   };
@@ -451,58 +452,72 @@ function initSatMap(){
   }).addTo(satMap);
 }
 
-// Ziel-Zustand für die Interpolation (Dead-Reckoning zwischen Server-Updates)
-let satTarget=null;   // { lat, lon, track, gs, ts }
-let satAnimRunning=false;
+// Anker für die Hochrechnung (Dead-Reckoning zwischen Server-Updates)
+let satTarget=null;      // { lat, lon, track, gs, ts }  ts = Zeitpunkt, zu dem die Position galt
+let satAnimTimer=null;
+const SAT_STEP_MS=1000;  // Länge eines animierten Kartenschritts
 
 function updateSatMap(a){
   const wrap=$("satwrap"), lab=$("satLab");
   if(a.lat==null||a.lon==null){ wrap.style.display="none"; lab.style.display="none"; return; }
   wrap.style.display="block"; lab.style.display="block";
   initSatMap();
-  setTimeout(()=>satMap.invalidateSize(),60);
 
-  // Beim ersten Einblenden: Karte hart auf Position setzen
+  // Positionsalter berücksichtigen: Anker auf den Zeitpunkt zurückdatieren, zu dem die Position galt
+  const age=(a.seenPos!=null && a.seenPos>=0 && a.seenPos<60) ? a.seenPos : 0;
+  const anchor={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:performance.now()-age*1000 };
+
   if(!a._satCentered){
-    satMap.setView([a.lat,a.lon],12);
+    // Erstes Einblenden: Größe neu messen, dann hart auf Position setzen
+    satMap.invalidateSize({pan:false});
+    satMap.setView([a.lat,a.lon],12,{animate:false});
+    setTimeout(()=>satMap.invalidateSize(),60);
     a._satCentered=true;
-    satTarget={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:performance.now() };
+    satTarget=anchor;
     startSatAnim();
-  } else {
-    // Neues Server-Update -> neuer Anker für die Hochrechnung
-    satTarget={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:performance.now() };
+  } else if(!satTarget || satTarget.lat!==a.lat || satTarget.lon!==a.lon){
+    // Nur bei TATSÄCHLICH neuer Position neu ankern.
+    // Unveränderte Position (Server-/Quellen-Cache) darf den Anker nicht auf "jetzt" zurücksetzen,
+    // sonst springt die Karte alle 2 s auf denselben alten Punkt zurück.
+    satTarget=anchor;
   }
 
   if(a.track!=null){
     $("satPlane").style.transform=`translate(-50%,-50%) rotate(${a.track}deg)`;
   }
-  $("satCoords").innerHTML=`${a.lat.toFixed(2)}° ${a.lat>=0?'N':'S'} &nbsp; ${a.lon.toFixed(2)}° ${a.lon>=0?'E':'W'}`;
 }
 
-// Position aus letztem Anker + Kurs/Speed kontinuierlich hochrechnen
-function deadReckon(t){
-  const dt=(performance.now()-t.ts)/1000;          // Sekunden seit letztem Update
+// Position aus Anker + Kurs/Speed für Zeitpunkt atMs (performance.now()-Basis) hochrechnen
+function deadReckon(t, atMs){
+  const dt=(atMs-t.ts)/1000;
   if(t.gs==null || t.track==null || dt<=0) return [t.lat, t.lon];
-  const distNm=(t.gs/3600)*dt;                      // Knoten -> NM in dt Sekunden
-  const distDeg=distNm/60;                          // 1 NM ≈ 1/60 Breitengrad
+  const distDeg=((t.gs/3600)*Math.min(dt,30))/60;   // Knoten -> NM -> Grad; max. 30 s hochrechnen
   const rad=toRad(t.track);
   const dLat=distDeg*Math.cos(rad);
   const dLon=distDeg*Math.sin(rad)/Math.cos(toRad(t.lat));
   return [t.lat+dLat, t.lon+dLon];
 }
 
+// Karte in animierten 1-s-Schritten auf die vorausberechnete Position ziehen.
+// Leaflets Pan-Animation rendert subpixelgenau; ein panTo pro Frame mit animate:false
+// wird dagegen auf ganze Pixel abgeschnitten (Bewegung < 1 px/Frame -> Stillstand bzw. Ruckeln).
+function satStep(){
+  if(!satTarget || !satMap || !$("sheet").classList.contains("open")){ stopSatAnim(); return; }
+  const now=performance.now();
+  const [lat,lon]=deadReckon(satTarget, now+SAT_STEP_MS);
+  satMap.panTo([lat,lon],{animate:true, duration:SAT_STEP_MS/1000, easeLinearity:1, noMoveStart:true});
+  const [clat,clon]=deadReckon(satTarget, now);
+  $("satCoords").innerHTML=`${clat.toFixed(2)}° ${clat>=0?'N':'S'} &nbsp; ${clon.toFixed(2)}° ${clon>=0?'E':'W'}`;
+}
+
 function startSatAnim(){
-  if(satAnimRunning) return;
-  satAnimRunning=true;
-  const step=()=>{
-    if(!satTarget || !$("sheet").classList.contains("open")){ satAnimRunning=false; return; }
-    const [lat,lon]=deadReckon(satTarget);
-    // sanftes Nachziehen der Karte (kein animiertes panTo -> kein Ruckeln, da jeder Frame minimal)
-    satMap.panTo([lat,lon],{animate:false});
-    $("satCoords").innerHTML=`${lat.toFixed(2)}° ${lat>=0?'N':'S'} &nbsp; ${lon.toFixed(2)}° ${lon>=0?'E':'W'}`;
-    requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
+  if(satAnimTimer) return;
+  satStep();
+  satAnimTimer=setInterval(satStep, SAT_STEP_MS);
+}
+
+function stopSatAnim(){
+  if(satAnimTimer){ clearInterval(satAnimTimer); satAnimTimer=null; }
 }
 
 function setSatInset(src){
@@ -512,7 +527,7 @@ function setSatInset(src){
 }
 
 function resetSatMap(){
-  satTarget=null; satAnimRunning=false;
+  satTarget=null; stopSatAnim();
   setSatInset(null);
   $("satwrap").style.display="none"; $("satLab").style.display="none";
 }
