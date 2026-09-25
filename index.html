@@ -1361,7 +1361,8 @@ function updateSatMap(a){
   // und die Karte springt beim ersten echten Positionsupdate weit nach vorn.
   const anchor={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:(a.posTs!=null ? a.posTs : performance.now()) };
 
-  if(!a._satCentered){
+  const first=!a._satCentered;
+  if(first){
     // Erstes Einblenden: Größe neu messen, dann hart auf Position setzen
     satMap.invalidateSize({pan:false});
     satMap.setView([a.lat,a.lon],12,{animate:false});
@@ -1376,9 +1377,24 @@ function updateSatMap(a){
     satTarget=anchor;
   }
 
-  if(a.track!=null){
-    $("satPlane").style.transform=`translate(-50%,-50%) rotate(${a.track}deg)`;
+  if(a.track!=null) setPlaneRotation(a.track, first);
+}
+
+// Flugzeugsymbol drehen: beim Öffnen sofort in Flugrichtung (ohne Animation),
+// danach sanft und immer auf dem kürzesten Weg (350° -> 10° dreht 20°, nicht 340°)
+let planeRot=null;
+function setPlaneRotation(track, instant){
+  const el=$("satPlane");
+  if(planeRot==null || instant){
+    planeRot=track;
+    el.style.transition="none";
+    el.style.transform=`translate(-50%,-50%) rotate(${planeRot}deg)`;
+    void el.offsetWidth;            // Stil übernehmen, bevor die Animation wieder greift
+    el.style.transition="";
+    return;
   }
+  planeRot+=((track-planeRot)%360+540)%360-180;
+  el.style.transform=`translate(-50%,-50%) rotate(${planeRot}deg)`;
 }
 
 // Position aus Anker + Kurs/Speed für Zeitpunkt atMs (performance.now()-Basis) hochrechnen
@@ -1428,7 +1444,7 @@ function setSatPhoto(a){
 }
 
 function resetSatMap(){
-  satTarget=null; stopSatAnim();
+  satTarget=null; stopSatAnim(); planeRot=null;
   setSatPhoto(null);
   $("satwrap").style.display="none";
 }
