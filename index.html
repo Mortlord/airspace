@@ -712,8 +712,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
   :focus-visible{outline:2px solid var(--sel);outline-offset:2px}
 
   /* Kopf */
-  h1{font-weight:600;font-size:28px;line-height:1.15;margin:22px 0 4px;color:var(--txt);letter-spacing:-.005em}
-  .status{color:var(--txt-dim);font-size:15px;margin:0 0 6px;min-height:21px}
+  /* Kopfzeile: Anzahl links, Stand der Daten rechts */
+  .topline{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 2px}
+  h1{font-weight:600;font-size:20px;line-height:1.25;margin:0;color:var(--txt)}
+  .clock{flex:none;color:var(--txt-dim);font-size:15px}
+  .clock.warn{color:var(--sel)}
+  .status{color:var(--txt-dim);font-size:15px;margin:2px 0 4px}
+  .status[hidden]{display:none}
   .status.warn{color:var(--sel)}
   .status a{color:inherit}
 
@@ -818,7 +823,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </style>
 </head>
 <body>
-  <h1 id="headline">Flugzeuge im Umkreis</h1>
+  <div class="topline">
+    <h1 id="headline">Flugzeuge im Umkreis</h1>
+    <span class="clock" id="clock" title="Stand der Daten" aria-label="Stand der Daten"></span>
+  </div>
   <p class="status" id="status" aria-live="polite">Warte auf Standort …</p>
   <div class="trackbar" id="trackBar" hidden>
     <button class="backbtn" id="trackBack">
@@ -1096,9 +1104,10 @@ function drawRadar(){
     const isSel=!!(state.selected && a.hex===state.selected.hex);
     const match=matchesQuery(a);
 
-    // Helligkeit kodiert die Höhe: tief = gedämpft, hoch = hell
+    // Helligkeit kodiert die Höhe in drei klar getrennten Stufen:
+    // unter FL100 gedämpft, FL100 bis FL250 mittel, darüber voll hell
     const f=altFt(a);
-    let alpha=f==null ? .6 : .5+.5*Math.min(1,Math.max(0,f/40000));
+    let alpha=f==null ? .6 : (f<10000 ? .42 : f<25000 ? .7 : 1);
     if(!match) alpha=.18;
     const tcol=`rgba(${COL.target.join(",")},${alpha})`;
     const col=isSel ? COL.sel : tcol;
@@ -1247,40 +1256,44 @@ function setNotice(text, ms=7000){
 }
 
 function updateStatus(){
-  const el=$("status");
+  const el=$("status"), clk=$("clock");
   const stale=consecutiveFails>=3;
   const lost=!!(state.track && state.track.lostSince);
   $("headline").style.opacity = (stale||lost) ? "0.5" : "1";
+
+  // Rechts oben: Stand der Daten; bei Verbindungsproblem in Signalfarbe
+  clk.textContent = lastGoodTs ? fmtTime(lastGoodTs) : "";
+  clk.classList.toggle("warn", stale||lost);
+
+  // Zweite Zeile nur, wenn es etwas zu sagen gibt
+  let msg="", warn=false, html=false;
   if(state.notice && Date.now()<state.notice.until){
-    el.classList.add("warn"); el.textContent=state.notice.text; return;
-  }
-  state.notice=null;
-  el.classList.toggle("warn", stale || lost || (!state.track && !!state.gpsError));
-  if(state.track){
-    if(lost){
-      el.textContent=`${state.track.cs} wird gerade nicht empfangen. Letzter Stand ${fmtTime(lastGoodTs)}`;
-    } else if(stale){
-      el.textContent=`Keine Verbindung. Letzter Stand ${fmtTime(lastGoodTs)}`;
-    } else {
-      const a=state.aircraft[0];
-      const d=(a && state.gpsPos) ? haversineNm(state.gpsPos.lat,state.gpsPos.lon,a.lat,a.lon) : null;
-      el.textContent=`Aktualisiert um ${fmtTime(lastGoodTs)}`+(d!=null ? `, ${fmtInt(Math.round(d))} NM von dir entfernt` : "");
-    }
-    return;
-  }
-  if(state.gpsError && !state.center){
-    el.innerHTML = state.gpsError===1
-      ? `Standort ist nicht freigegeben. <a href="help.html#standort">So gibst du ihn frei</a>`
-      : "Standort konnte nicht ermittelt werden.";
-  } else if(!state.center){
-    el.textContent="Warte auf Standort …";
-  } else if(!lastGoodTs){
-    el.textContent="Lade Flugdaten …";
-  } else if(stale){
-    el.textContent=`Keine Verbindung. Letzter Stand ${fmtTime(lastGoodTs)}`;
+    msg=state.notice.text; warn=true;
   } else {
-    el.textContent=`Aktualisiert um ${fmtTime(lastGoodTs)}`;
+    state.notice=null;
+    if(state.track){
+      if(lost){ msg=`${state.track.cs} wird gerade nicht empfangen.`; warn=true; }
+      else if(stale){ msg="Keine Verbindung."; warn=true; }
+      else {
+        const t=state.aircraft[0];
+        const d=(t && state.gpsPos) ? haversineNm(state.gpsPos.lat,state.gpsPos.lon,t.lat,t.lon) : null;
+        if(d!=null) msg=`${fmtInt(Math.round(d))} NM von dir entfernt`;
+      }
+    } else if(state.gpsError && !state.center){
+      warn=true; html=state.gpsError===1;
+      msg = html ? `Standort ist nicht freigegeben. <a href="help.html#standort">So gibst du ihn frei</a>`
+                 : "Standort konnte nicht ermittelt werden.";
+    } else if(!state.center){
+      msg="Warte auf Standort …";
+    } else if(!lastGoodTs){
+      msg="Lade Flugdaten …";
+    } else if(stale){
+      msg="Keine Verbindung. Angezeigt wird der letzte Stand."; warn=true;
+    }
   }
+  el.hidden=!msg;
+  el.classList.toggle("warn",warn);
+  if(html) el.innerHTML=msg; else el.textContent=msg;
 }
 
 // Rohformat (adsb.fi/adsb.lol via Server) -> einheitliches Objekt (dst NIE übernehmen, immer selbst rechnen)
@@ -1685,7 +1698,7 @@ function initBgMap(){
   bgMap.createPane("scrim").style.zIndex=250;
   L.rectangle([[-85,-180],[85,180]],{
     pane:"scrim", renderer:L.svg({pane:"scrim"}), interactive:false,
-    stroke:false, fillColor:"#0F1B2D", fillOpacity:.62
+    stroke:false, fillColor:"#0F1B2D", fillOpacity:.35
   }).addTo(bgMap);
 }
 
