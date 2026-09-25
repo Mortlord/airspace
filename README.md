@@ -10,7 +10,7 @@ Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort z
 - **Suche** nach Callsign oder Hex-Kennung (Teiltreffer genügen); Nicht-Treffer werden gedimmt.
 - **Weltweite Verfolgung:** Liegt ein vollständiges Callsign oder eine Flugnummer (VN10 wird zu HVN10) nicht im Umkreis, springt das Radar zum Flugzeug, zeigt nur dieses und folgt ihm; ein Button führt zurück zum eigenen Standort.
 - **Umkreis** 5, 10, 25, 50 oder 100 NM.
-- **Detailansicht** beim Antippen eines Flugzeugs: Satellitenbild (Esri World Imagery), das dem Flugzeug folgt, Foto von Planespotters mit Nennung der Fotografin oder des Fotografen, Route, Muster, Kennzeichen, Höhe, Geschwindigkeit, Entfernung und Richtung.
+- **Detailansicht** beim Antippen eines Flugzeugs: Satellitenbild (Esri World Imagery), das dem Flugzeug folgt, mit eigenem Symbol je ADS-B-Emitterkategorie (Jet, Großraum, Kleinflugzeug, Hubschrauber, Segler, Militärjet, Ballon, Drohne), Foto von Planespotters mit Nennung der Fotografin oder des Fotografen, Route, Muster, Kennzeichen, Höhe, Geschwindigkeit, Entfernung und Richtung.
 - **Robuste Datenabfrage:** Bei Netzaussetzern bleiben die letzten gültigen Daten stehen; erst nach drei Fehlern in Folge zeigt die Statuszeile „Keine Verbindung“.
 - **Deutschsprachig**, inklusive Hilfe- sowie Impressums- und Datenschutzseite.
 

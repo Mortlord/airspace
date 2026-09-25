@@ -703,10 +703,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
     --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+  /* Das Dokument selbst scrollt nicht. iOS lässt in der installierten Web-App das Dokument
+     nach einem Überziehen am Rand gelegentlich versetzt hängen; gescrollt wird deshalb nur
+     in einem eigenen Container (.page), dessen Überziehen nicht an das Dokument weitergeht. */
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
     font-family:var(--font);font-size:16px;line-height:1.4;overscroll-behavior:none;
     font-variant-numeric:tabular-nums}
-  body{padding:env(safe-area-inset-top) 20px calc(env(safe-area-inset-bottom) + 16px);max-width:520px;margin:0 auto}
+  .page{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
+    padding:env(safe-area-inset-top) 20px calc(env(safe-area-inset-bottom) + 16px)}
+  .inner{max-width:520px;margin:0 auto}
   a{color:var(--txt)}
   button{font-family:inherit}
   :focus-visible{outline:2px solid var(--sel);outline-offset:2px}
@@ -780,10 +785,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .sheet{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;
     background:var(--surface);border-top-left-radius:14px;border-top-right-radius:14px;
     border:1px solid var(--line);border-bottom:0;
-    transform:translateY(110%);transition:transform .3s cubic-bezier(.4,0,.2,1);
-    z-index:20;max-height:88vh;overflow-y:auto;
+    transform:translateY(110%);visibility:hidden;
+    transition:transform .3s cubic-bezier(.4,0,.2,1),visibility 0s linear .3s;
+    z-index:20;max-height:88vh;overflow-y:auto;overscroll-behavior-y:contain;
     padding:0 20px calc(env(safe-area-inset-bottom) + 24px)}
-  .sheet.open{transform:translateY(0)}
+  /* geschlossen unsichtbar, damit der Scrollbereich des Sheets keine Berührungen abfängt */
+  .sheet.open{transform:translateY(0);visibility:visible;transition:transform .3s cubic-bezier(.4,0,.2,1)}
   .grip{width:36px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 34px}
   .closebtn{position:absolute;top:8px;right:12px;width:36px;height:36px;border:0;background:transparent;
     color:var(--txt-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:4px}
@@ -823,6 +830,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </style>
 </head>
 <body>
+<div class="page" id="page"><div class="inner">
   <div class="topline">
     <h1 id="headline">Flugzeuge im Umkreis</h1>
     <span class="clock" id="clock" title="Stand der Daten" aria-label="Stand der Daten"></span>
@@ -868,6 +876,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <a href="legal.html">Impressum &amp; Datenschutz</a>
   </nav>
 
+</div></div>
+
   <!-- Detail-Sheet -->
   <div class="sheet" id="sheet" role="dialog" aria-label="Flugdetails">
     <button class="closebtn" id="sheetClose" aria-label="Schließen">
@@ -876,9 +886,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="grip"></div>
     <div class="satwrap" id="satwrap" style="display:none">
       <div class="satmap" id="satmap"></div>
-      <div class="sat-plane" id="satPlane">
-        <svg width="30" height="30" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0011.5 2 1.5 1.5 0 0010 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" fill="#E8EEF5" stroke="#0F1B2D" stroke-width=".8" stroke-linejoin="round"/></svg>
-      </div>
+      <div class="sat-plane" id="satPlane"></div>
       <div class="sat-inset" id="satInset" style="display:none"><img id="satInsetImg" alt="Foto des Flugzeugs"></div>
       <div class="sat-coords" id="satCoords"></div>
     </div>
@@ -1304,6 +1312,7 @@ function normalizeRaw(a){
     alt:(a.alt_baro!=null?a.alt_baro:a.alt_geom),
     gs:a.gs, track:a.track,
     seenPos:(typeof a.seen_pos==="number"?a.seen_pos:null), // Alter der Position in Sekunden
+    cat:(typeof a.category==="string"?a.category.toUpperCase():null), // ADS-B-Emitterkategorie (A1..B6)
     type:a.t, reg:a.r
   };
 }
@@ -1342,6 +1351,55 @@ function stopGps(){
   if(gpsWatch!==null){ navigator.geolocation.clearWatch(gpsWatch); gpsWatch=null; }
 }
 
+/* ============ Flugzeugsymbole für die Detailansicht ============ */
+// Eigene, schlichte Silhouetten (Nase oben = Norden, gedreht wird nach Kurs).
+// Auswahl nach der ADS-B-Emitterkategorie, die das Flugzeug selbst sendet.
+const PLANE_FILL='#E8EEF5', PLANE_EDGE='#0F1B2D';
+const ICONS={
+  jet:{ size:32, svg:
+    `<path d="M12 1.5c.9 0 1.3 1.1 1.3 2.3v5.4l8.2 4.4v1.7l-8.2-2.4v5.5l2.7 1.9v1.3l-4-1-4 1v-1.3l2.7-1.9v-5.5l-8.2 2.4v-1.7l8.2-4.4V3.8c0-1.2.4-2.3 1.3-2.3z"/>` },
+  heavy:{ size:38, svg:
+    `<path d="M12 1c1.3 0 1.8 1.4 1.8 3v4.6l9.2 4.6V15l-9.2-2.4v6l3.2 2.2v1.4l-5-1-5 1v-1.4l3.2-2.2v-6L1 15v-1.8l9.2-4.6V4c0-1.6.5-3 1.8-3z"/>
+     <rect x="15.6" y="10.4" width="1.3" height="2.6" rx=".6"/><rect x="19" y="12.1" width="1.3" height="2.6" rx=".6"/>
+     <rect x="7.1" y="10.4" width="1.3" height="2.6" rx=".6"/><rect x="3.7" y="12.1" width="1.3" height="2.6" rx=".6"/>` },
+  light:{ size:28, svg:
+    `<path d="M11.1 3.2h1.8l.4 11.8-.6 4.3h-1.4l-.6-4.3z"/>
+     <rect x="1.8" y="7" width="20.4" height="2.6" rx="1.1"/>
+     <rect x="7.6" y="17.6" width="8.8" height="1.9" rx=".8"/>
+     <rect x="8.6" y="1.6" width="6.8" height="1" rx=".5"/>` },
+  glider:{ size:32, svg:
+    `<path d="M11.4 3h1.2l.3 16.5h-1.8z"/>
+     <rect x=".6" y="8" width="22.8" height="1.5" rx=".75"/>
+     <rect x="9.2" y="18.6" width="5.6" height="1.3" rx=".6"/>` },
+  heli:{ size:36, svg:
+    `<path d="M2.8 3.4l18.4 13.2M21.2 3.4L2.8 16.6" stroke="${PLANE_EDGE}" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+     <path d="M2.8 3.4l18.4 13.2M21.2 3.4L2.8 16.6" stroke="${PLANE_FILL}" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+     <rect x="11.35" y="13" width="1.3" height="8.2" rx=".6"/>
+     <rect x="9.4" y="19.9" width="5.2" height="1.2" rx=".6"/>
+     <ellipse cx="12" cy="10" rx="3.1" ry="4.4"/>` },
+  fast:{ size:30, svg:
+    `<path d="M12 1l1.9 7.2 7.4 8.6v1.6l-7.3-1.6 1.4 3.9v1.1H8.6v-1.1l1.4-3.9-7.3 1.6v-1.6l7.4-8.6z"/>` },
+  balloon:{ size:30, svg:
+    `<circle cx="12" cy="9.5" r="7.5"/><rect x="10.2" y="19.2" width="3.6" height="3" rx=".6"/>
+     <path d="M8.2 15.6l2.3 3.6M15.8 15.6l-2.3 3.6" stroke="${PLANE_EDGE}" stroke-width="2" fill="none"/>
+     <path d="M8.2 15.6l2.3 3.6M15.8 15.6l-2.3 3.6" stroke="${PLANE_FILL}" stroke-width=".9" fill="none"/>` },
+  drone:{ size:28, svg:
+    `<rect x="9.6" y="9.6" width="4.8" height="4.8" rx="1.2"/>
+     <path d="M6 6l12 12M18 6L6 18" stroke="${PLANE_EDGE}" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+     <path d="M6 6l12 12M18 6L6 18" stroke="${PLANE_FILL}" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+     <circle cx="5.4" cy="5.4" r="2.6"/><circle cx="18.6" cy="5.4" r="2.6"/><circle cx="5.4" cy="18.6" r="2.6"/><circle cx="18.6" cy="18.6" r="2.6"/>` }
+};
+// Emitterkategorie (DO-260): A1 leicht, A2 klein, A3 groß, A4 B757, A5 schwer, A6 hochleistungsfähig,
+// A7 Hubschrauber, B1 Segelflugzeug, B2 Ballon, B4 Ultraleicht, B6 Drohne
+const CAT_ICON={A1:"light",A2:"jet",A3:"jet",A4:"heavy",A5:"heavy",A6:"fast",A7:"heli",
+                B1:"glider",B2:"balloon",B4:"light",B6:"drone"};
+function iconKey(a){ return CAT_ICON[a.cat] || "jet"; }
+function iconSvg(key){
+  const ic=ICONS[key];
+  return `<svg width="${ic.size}" height="${ic.size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">`+
+         `<g fill="${PLANE_FILL}" stroke="${PLANE_EDGE}" stroke-width=".8" stroke-linejoin="round">${ic.svg}</g></svg>`;
+}
+
 /* ============ Satellitenkarte (Leaflet + Esri) ============ */
 let satMap=null;
 
@@ -1378,7 +1436,10 @@ function updateSatMap(a){
   if(first){
     // Erstes Einblenden: Größe neu messen, dann hart auf Position setzen
     satMap.invalidateSize({pan:false});
-    satMap.setView([a.lat,a.lon],12,{animate:false});
+    // Sofort auf die hochgerechnete AKTUELLE Position setzen, nicht auf die gemeldete:
+    // die ist oft viele Sekunden alt, und die Karte würde in der ersten Sekunde hinterherspringen.
+    const [nowLat,nowLon]=deadReckon(anchor, performance.now());
+    satMap.setView([nowLat,nowLon],12,{animate:false});
     setTimeout(()=>satMap.invalidateSize(),60);
     a._satCentered=true;
     satTarget=anchor;
@@ -1390,7 +1451,19 @@ function updateSatMap(a){
     satTarget=anchor;
   }
 
-  if(a.track!=null) setPlaneRotation(a.track, first);
+  setPlaneIcon(a);
+  const key=iconKey(a);
+  if(key==="balloon") setPlaneRotation(0, first);          // Ballone haben keine Flugrichtung
+  else if(a.track!=null) setPlaneRotation(a.track, first);
+}
+
+// Symbol passend zur Emitterkategorie; nur neu setzen, wenn sich die Art ändert
+let planeIconKey=null;
+function setPlaneIcon(a){
+  const key=iconKey(a);
+  if(key===planeIconKey) return;
+  planeIconKey=key;
+  $("satPlane").innerHTML=iconSvg(key);
 }
 
 // Flugzeugsymbol drehen: beim Öffnen sofort in Flugrichtung (ohne Animation),
@@ -1457,7 +1530,7 @@ function setSatPhoto(a){
 }
 
 function resetSatMap(){
-  satTarget=null; stopSatAnim(); planeRot=null;
+  satTarget=null; stopSatAnim(); planeRot=null; planeIconKey=null;
   setSatPhoto(null);
   $("satwrap").style.display="none";
 }
