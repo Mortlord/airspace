@@ -801,6 +801,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .satwrap{position:relative;width:100%;height:230px;border-radius:6px;overflow:hidden;
     border:1px solid var(--line);margin:8px 0 4px}
   .satmap{position:absolute;inset:0;background:#0B1422}
+  /* Kacheln minimal überlappen: verhindert Haarlinien beim Mitziehen der Karte */
+  .satmap .leaflet-tile-container img{width:256.5px!important;height:256.5px!important}
   .satmap .leaflet-control-attribution{font-family:var(--font);font-size:10px;
     background:rgba(15,27,45,.75);color:var(--txt-dim)}
   .satmap .leaflet-control-attribution a{color:var(--txt-dim)}
@@ -822,6 +824,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .route .apname{color:var(--txt-dim);font-size:14px}
   .route .to{text-align:right}
   .route .arrow{color:var(--txt-dim);padding-top:8px}
+  .route-doubt{margin:18px 0 4px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    color:var(--txt-dim);font-size:16px}
   .facts{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:16px 0 0;font-size:17px}
   .facts dt{color:var(--txt-dim)}
   .facts dd{margin:0;text-align:right}
@@ -1634,7 +1638,9 @@ async function openSheet(a,dist,brg){
   const cs=(a.flight||"").trim();
   if(cs){
     try{
-      const r=await fetch(`${BASE}/route?callsign=${encodeURIComponent(cs)}`,{cache:"no-store"});
+      // Position des Flugzeugs mitschicken: der Server prüft, ob die Route dazu passt
+      const pos=(a.lat!=null&&a.lon!=null) ? `&lat=${a.lat.toFixed(3)}&lon=${a.lon.toFixed(3)}` : "";
+      const r=await fetch(`${BASE}/route?callsign=${encodeURIComponent(cs)}${pos}`,{cache:"no-store"});
       const j=await r.json();
       a._route=j;
       if(state.selected && state.selected.hex===a.hex){ state.selected._route=j; renderSheet(state.selected); }
@@ -1689,7 +1695,10 @@ function renderSheet(a){
   let html=`<div class="cs-big">${esc(a.flight||a.hex||"Unbekannt")}</div>`;
   if(airline) html+=`<div class="sub">${esc(airline)}</div>`;
 
-  if(fromCode||toCode){
+  if((fromCode||toCode) && a._route.plausible===false){
+    // Callsign-Datenbanken sind bei Charterflügen oft veraltet: nicht als Tatsache anzeigen
+    html+=`<p class="route-doubt">Route unklar. Die Datenbank nennt ${esc(fromCode||"?")} nach ${esc(toCode||"?")}, das passt aber nicht zur aktuellen Position.</p>`;
+  } else if(fromCode||toCode){
     html+=`<div class="route">
       <div><div class="ap">${esc(fromCode||"?")}</div><div class="apname">${esc(from.city||"")}</div></div>
       <div class="arrow" aria-hidden="true"><svg width="20" height="12" viewBox="0 0 20 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h17M13 1l5 5-5 5"/></svg></div>

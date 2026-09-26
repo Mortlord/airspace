@@ -56,7 +56,7 @@ Im `localStorage` des Browsers (Präfix `asl_`) liegen nur Umkreis sowie die Sch
 |----------|-------|
 | `GET /aircraft?lat=&lon=&radius=` | Flugzeuge im Umkreis des Standorts, Abruf alle 2 Sekunden |
 | `GET /callsign?cs=` | Weltweite Suche und Verfolgung eines Callsigns oder einer IATA-Flugnummer (Zuordnung aus den VRS-Stammdaten), nur exakte Treffer mit Position |
-| `GET /route?callsign=` | Abflug- und Zielflughafen, serverseitig zwischengespeichert |
+| `GET /route?callsign=&lat=&lon=` | Abflug- und Zielflughafen, serverseitig zwischengespeichert; mit Flugzeugposition prüft der Server, ob die Route plausibel ist (Flughafenkoordinaten aus OurAirports), und holt bei unplausiblen Routen eine Zweitmeinung von AeroDataBox (Tagesbudget per `ADB_CHECK_DAILY_MAX`, Standard 5) |
 | `GET /airlines`, `GET /aircrafttypes` | Namen für Airline-Kürzel und Mustercodes in der Detailansicht |
 
 Der Server bezieht die Positionen von adsb.fi, ersatzweise von adsb.lol (bei der Callsign-Suche wird adsb.lol zusätzlich gefragt, wenn adsb.fi nichts findet), und die Routen von adsbdb bzw. AeroDataBox. Entfernung und Richtung berechnet die App immer selbst per Haversine vom Standort aus; ein mitgeliefertes `dst`-Feld wird ignoriert.
