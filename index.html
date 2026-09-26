@@ -1111,7 +1111,7 @@ function drawRadar(){
   for(const a of list){
     if(a.lat==null||a.lon==null) continue;
     // Anzeigeposition zwischen den Meldungen aus Kurs und Geschwindigkeit hochrechnen
-    const [plat,plon]=(a.posTs!=null) ? deadReckon({lat:a.lat,lon:a.lon,track:a.track,gs:a.gs,ts:a.posTs}, now) : [a.lat,a.lon];
+    const [plat,plon]=(a.posTs!=null) ? deadReckon({lat:a.lat,lon:a.lon,track:a.track,gs:a.gs,spd:a.spd,hz:a.hz,turn:a.turn,ts:a.posTs}, now) : [a.lat,a.lon];
     const [x,y,dist]=toXY(plat,plon);
     if(dist>state.radius) continue;
     const brg=bearingDeg(state.center.lat,state.center.lon,a.lat,a.lon);
@@ -1190,12 +1190,13 @@ function fetchTimeout(url, ms=8000, headers){
 // Wird nur gesetzt, wenn sich lat/lon für ein Flugzeug ändert. Unveränderte (gecachte) Positionen
 // behalten ihren ursprünglichen Zeitstempel, damit die Hochrechnung nicht vom Klick- oder Poll-Zeitpunkt abhängt.
 // Nebenbei wird die Positionshistorie für die Radarpunkte geführt.
-const posMemo=new Map(); // hex -> { lat, lon, ts, hist:[[lat,lon],...] }
+const posMemo=new Map(); // hex -> { lat, lon, ts, hist:[[lat,lon],...], vObs, interval }
 function stampPositions(list){
   const now=performance.now();
   for(const a of list){
     if(a.lat==null||a.lon==null) continue;
     const prev=posMemo.get(a.hex);
+    let m=prev;
     if(prev && prev.lat===a.lat && prev.lon===a.lon){
       a.posTs=prev.ts;
     } else {
@@ -1203,8 +1204,29 @@ function stampPositions(list){
       a.posTs=now-age*1000;
       const hist=prev ? prev.hist.slice(-(HIST_LEN)) : [];
       hist.push([a.lat,a.lon]);
-      posMemo.set(a.hex,{lat:a.lat,lon:a.lon,ts:a.posTs,hist});
+      // Tatsächlich zurückgelegte Strecke seit der letzten Meldung: zeigt, wie schnell das Flugzeug
+      // wirklich vorankommt (bei ungenauer Geschwindigkeitsangabe, z. B. MLAT, weniger als gs)
+      let vObs=prev?.vObs ?? null, interval=prev?.interval ?? null, turn=0;
+      if(prev){
+        const dt=(a.posTs-prev.ts)/1000;
+        if(dt>=1 && dt<=120){
+          vObs=haversineNm(prev.lat,prev.lon,a.lat,a.lon)/dt*3600;   // Knoten
+          interval=dt;
+          // Kurvenrate aus der Kursänderung (Grad/s); nur bei kurzen Abständen eindeutig
+          if(prev.track!=null && a.track!=null && dt<=20){
+            const d=((a.track-prev.track)%360+540)%360-180;
+            if(Math.abs(d)<=150){ turn=d/dt; if(Math.abs(turn)<0.3) turn=0; turn=Math.max(-15,Math.min(15,turn)); }
+          }
+        }
+      }
+      m={lat:a.lat,lon:a.lon,ts:a.posTs,hist,vObs,interval,turn,track:a.track};
+      posMemo.set(a.hex,m);
     }
+    // Bewegungsmodell für die Hochrechnung
+    const gs=a.gs;
+    a.spd = (gs!=null && m?.vObs!=null) ? Math.min(gs, m.vObs*1.1) : gs;
+    a.hz  = (m?.interval!=null) ? Math.min(30, Math.max(6, m.interval*1.5)) : 20;
+    a.turn= m?.turn || 0;
   }
   // alte Einträge aufräumen (länger als 5 min ohne neue Position)
   for(const [hex,m] of posMemo){ if(now-m.ts>300000) posMemo.delete(hex); }
@@ -1436,7 +1458,7 @@ function updateSatMap(a){
   // Anker mit dem Zeitpunkt, zu dem die Position tatsächlich galt (aus stampPositions),
   // NICHT mit dem Klickzeitpunkt: sonst liegt der erste Anker um die Verweildauer der Daten zurück
   // und die Karte springt beim ersten echten Positionsupdate weit nach vorn.
-  const anchor={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, ts:(a.posTs!=null ? a.posTs : performance.now()) };
+  const anchor={ lat:a.lat, lon:a.lon, track:a.track, gs:a.gs, spd:a.spd, hz:a.hz, turn:a.turn, ts:(a.posTs!=null ? a.posTs : performance.now()) };
 
   const first=!a._satCentered;
   if(first){
@@ -1490,14 +1512,26 @@ function setPlaneRotation(track, instant){
 }
 
 // Position aus Anker + Kurs/Speed für Zeitpunkt atMs (performance.now()-Basis) hochrechnen
+// spd: Geschwindigkeit für die Hochrechnung (gs, begrenzt auf das 1,1-fache der tatsächlich
+//      zurückgelegten Strecke), hz: wie viele Sekunden höchstens hochgerechnet wird
+//      (1,5-faches des üblichen Meldeabstands dieses Flugzeugs, 6 bis 30 s)
+//      turn: Kurvenrate in Grad/s; kreisende oder kurvende Flugzeuge werden auf einem Bogen
+//      statt geradeaus weitergerechnet
 function deadReckon(t, atMs){
   const dt=(atMs-t.ts)/1000;
-  if(t.gs==null || t.track==null || dt<=0) return [t.lat, t.lon];
-  const distDeg=((t.gs/3600)*Math.min(dt,30))/60;   // Knoten -> NM -> Grad; max. 30 s hochrechnen
-  const rad=toRad(t.track);
-  const dLat=distDeg*Math.cos(rad);
-  const dLon=distDeg*Math.sin(rad)/Math.cos(toRad(t.lat));
-  return [t.lat+dLat, t.lon+dLon];
+  const v=(t.spd!=null) ? t.spd : t.gs;
+  if(v==null || t.track==null || dt<=0) return [t.lat, t.lon];
+  const tau=Math.min(dt, t.hz!=null ? t.hz : 30);
+  const vDeg=v/3600/60;                                  // Knoten -> Grad (Breite) pro Sekunde
+  const h0=toRad(t.track), w=toRad(t.turn||0);
+  let dN, dE;
+  if(Math.abs(w)>1e-4){
+    dN=vDeg/w*(Math.sin(h0+w*tau)-Math.sin(h0));
+    dE=vDeg/w*(Math.cos(h0)-Math.cos(h0+w*tau));
+  } else {
+    dN=vDeg*tau*Math.cos(h0); dE=vDeg*tau*Math.sin(h0);
+  }
+  return [t.lat+dN, t.lon+dE/Math.cos(toRad(t.lat))];
 }
 
 // Karte in animierten 1-s-Schritten auf die vorausberechnete Position ziehen.
@@ -1546,7 +1580,7 @@ function resetSatMap(){
 function followTrack(force){
   const a=state.aircraft[0];
   if(!a || a.lat==null) return;
-  const [lat,lon]=(a.posTs!=null) ? deadReckon({lat:a.lat,lon:a.lon,track:a.track,gs:a.gs,ts:a.posTs}, performance.now()) : [a.lat,a.lon];
+  const [lat,lon]=(a.posTs!=null) ? deadReckon({lat:a.lat,lon:a.lon,track:a.track,gs:a.gs,spd:a.spd,hz:a.hz,turn:a.turn,ts:a.posTs}, performance.now()) : [a.lat,a.lon];
   state.center={lat,lon};
   updateBgMap(force);
 }
