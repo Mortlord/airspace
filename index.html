@@ -1234,18 +1234,33 @@ function stampPositions(list){
 
 let fetchGen=0;   // wird beim Moduswechsel erhöht; verspätete Antworten des alten Modus werden verworfen
 
+let fetchBusy=false;     // nie zwei Abrufe gleichzeitig
+let backoffUntil=0;      // nach "zu viele Anfragen" (429) kurz pausieren
+let lastFetchAt=0;
+
+// Koordinaten für die Anfrage auf 3 Nachkommastellen runden (ca. 100 m): GPS-Rauschen im Stand
+// erzeugt so keine neue Anfrage-Adresse, der Server-Cache greift, und der Server erfährt nur einen
+// ungefähren Standort. Der Radius bekommt 1 NM Zuschlag; die App filtert selbst exakt nach Entfernung.
+function requestKey(){
+  if(!state.center) return null;
+  return `lat=${state.center.lat.toFixed(3)}&lon=${state.center.lon.toFixed(3)}&radius=${state.radius+1}`;
+}
+
 async function fetchData(){
+  if(fetchBusy || Date.now()<backoffUntil) return;
   const gen=fetchGen;
+  fetchBusy=true; lastFetchAt=Date.now();
   try{
     let url;
     if(state.track){
       url=`${BASE}/callsign?cs=${encodeURIComponent(state.track.cs)}`;
     } else {
-      if(!state.center){ return; } // wartet auf GPS-Fix
-      const {lat,lon}=state.center;
-      url=`${BASE}/aircraft?lat=${lat}&lon=${lon}&radius=${state.radius}`;
+      const key=requestKey();
+      if(!key){ return; } // wartet auf GPS-Fix
+      url=`${BASE}/aircraft?${key}`;
     }
     const r=await fetchTimeout(url);
+    if(r.status===429){ backoffUntil=Date.now()+10000; throw new Error("HTTP 429"); }
     if(!r.ok) throw new Error("HTTP "+r.status);
     const j=await r.json();
     if(gen!==fetchGen) return;
@@ -1282,6 +1297,8 @@ async function fetchData(){
     console.warn(`fetchData fail #${consecutiveFails}:`, e.message);
     // erst nach mehreren Fehlern in Folge als veraltet markieren (vermeidet Flackern bei einzelner Delle)
     updateStatus();
+  }finally{
+    fetchBusy=false;
   }
 }
 
@@ -1293,7 +1310,8 @@ function setNotice(text, ms=7000){
 
 function updateStatus(){
   const el=$("status"), clk=$("clock");
-  const stale=consecutiveFails>=3;
+  // "Keine Verbindung" erst, wenn seit 15 s kein Abruf geklappt hat (einzelne Aussetzer bleiben unsichtbar)
+  const stale=consecutiveFails>=1 && lastGoodTs>0 && Date.now()-lastGoodTs>15000;
   const lost=!!(state.track && state.track.lostSince);
   $("headline").style.opacity = (stale||lost) ? "0.5" : "1";
 
@@ -1369,7 +1387,13 @@ function startGps(){
   if(gpsWatch!==null) return;
   gpsWatch=navigator.geolocation.watchPosition(
     p=>{ state.gpsError=null; state.gpsPos={lat:p.coords.latitude,lon:p.coords.longitude};
-         if(!state.track){ state.center=state.gpsPos; updateBgMap(); fetchData(); }
+         if(!state.track){
+           // Sofort nur abrufen, wenn sich die (gerundete) Anfrage wirklich ändert; iOS meldet auch im Stand
+           // etwa jede Sekunde eine neue Position, das hätte das Rate-Limit des Servers gesprengt
+           const before=requestKey();
+           state.center=state.gpsPos; updateBgMap();
+           if(requestKey()!==before || !lastGoodTs) fetchData();
+         }
          updateCounts(); updateStatus(); requestDraw(); },
     e=>{ console.warn("GPS:",e.message); state.gpsError=(e.code===1?1:2); updateStatus(); },
     {enableHighAccuracy:true,maximumAge:15000,timeout:27000}
@@ -1882,7 +1906,7 @@ sizeCanvas();
 updateStatus();
 requestDraw();
 startGps();                    // GPS ist der einzige Modus
-setInterval(fetchData, 2000);  // Datenabruf
+setInterval(()=>{ fetchData(); updateStatus(); }, 2000);  // Datenabruf, Statuszeile aktuell halten
 // Bewegung auf dem Radar: zweimal pro Sekunde neu zeichnen (hochgerechnete Positionen), nur bei sichtbarer Seite
 setInterval(()=>{
   if(document.hidden || !state.center) return;
