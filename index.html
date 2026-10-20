@@ -948,7 +948,8 @@ const HIST_LEN = 5;     // Anzahl Historienpunkte je Flugzeug
 const OV_FETCH_NM  = 30;     // Mindest-Abfrageradius in NM
 const OV_HORIZON_S = 180;    // Vorhersagehorizont in Sekunden
 const OV_STEP_S    = 2;      // Schrittweite der Hochrechnung
-const OV_MAX_SLANT = 15000;  // m; weiter entfernt zählt nicht als "über dir" (Reiseflughöhe 10 bis 12 km)
+const OV_MAX_SLANT = 20000;  // m, direkte Linie; Reiseflug (11 km) zählt so bis knapp 17 km seitlich, tief fliegende begrenzt der Winkel
+const OV_SMOOTH_MS = 10000;  // spätere Prognose für dasselbe Flugzeug bis zu 10 s ignorieren (kein Zurückspringen der Zeit)
 const OV_MIN_ELEV  = 15;     // Grad über dem Horizont
 const OV_MAX_AGE   = 30;     // s; ältere Positionen werden nicht hochgerechnet
 const OV_MAX_TURN  = 90;     // Grad; eine erkannte Kurve wird höchstens so weit fortgeschrieben
@@ -1760,8 +1761,14 @@ function updateOverhead(){
     if(!best || p.slant<best.slant) best=p;
   }
   const pick=(keep && best!==keep && best.slant>keep.slant*OV_SWITCH) ? keep : best;
+  // Zeitpunkt glätten: Verschiebt sich die Prognose für dasselbe Flugzeug nur leicht nach hinten,
+  // bleibt der bisherige Zeitpunkt, damit die Anzeige stetig herunterzählt. Frühere oder deutlich
+  // spätere Zeitpunkte (z. B. Abdrehen) werden übernommen.
+  let at=pick ? Date.now()+pick.t*1000 : 0;
+  const prev=state.overhead;
+  if(pick && prev && prev.hex===pick.hex && at>prev.at && at-prev.at<OV_SMOOTH_MS) at=prev.at;
   state.overhead=pick ? {
-    hex:pick.hex, flight:pick.a.flight, type:pick.a.type, at:Date.now()+pick.t*1000,
+    hex:pick.hex, flight:pick.a.flight, type:pick.a.type, at,
     az:pick.az, elev:pick.elev, slant:pick.slant, lat:pick.lat, lon:pick.lon, unsure:pick.unsure
   } : null;
 }
