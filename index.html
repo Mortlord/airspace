@@ -728,6 +728,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .status[hidden]{display:none}
   .status.warn{color:var(--sel)}
   .status a{color:inherit}
+  .status.ov{color:var(--txt);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   /* Verfolgungsmodus */
   .trackbar{margin:8px 0 4px}
@@ -943,6 +944,18 @@ const COL = {           // Canvas-Farben (entsprechen den CSS-Tokens)
 };
 const HIST_LEN = 5;     // Anzahl Historienpunkte je Flugzeug
 
+// Überflug-Vorhersage ("Gleich über dir"), siehe updateOverhead()
+const OV_FETCH_NM  = 30;     // Mindest-Abfrageradius in NM
+const OV_HORIZON_S = 180;    // Vorhersagehorizont in Sekunden
+const OV_STEP_S    = 2;      // Schrittweite der Hochrechnung
+const OV_MAX_SLANT = 15000;  // m; weiter entfernt zählt nicht als "über dir" (Reiseflughöhe 10 bis 12 km)
+const OV_MIN_ELEV  = 15;     // Grad über dem Horizont
+const OV_MAX_AGE   = 30;     // s; ältere Positionen werden nicht hochgerechnet
+const OV_MAX_TURN  = 90;     // Grad; eine erkannte Kurve wird höchstens so weit fortgeschrieben
+const OV_SWITCH    = 0.8;    // neuer Kandidat muss 20 % näher kommen, sonst bleibt der bisherige
+const EARTH_R = 6371000, FT = 0.3048;
+const COMPASS16 = ["N","NNO","NO","ONO","O","OSO","SO","SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+
 let state = {
   radius: LS.get("radius",25),
   labels: LS.get("labels",false),
@@ -951,6 +964,8 @@ let state = {
   selectedApt: null,                  // ICAO des Flughafens, dessen Wetter im Sheet steht
   center: null,                       // {lat,lon} Mitte des Radars (eigener Standort oder verfolgtes Flugzeug)
   gpsPos: null,                       // {lat,lon} eigener Standort
+  gpsAlt: null,                       // Höhe des Standorts in m, nur bei ausreichender Genauigkeit
+  overhead: null,                     // Überflug-Vorhersage, siehe updateOverhead()
   track: null,                        // {cs, hex, lostSince} bei weltweiter Verfolgung
   notice: null,                       // {text, until} kurzer Hinweis in der Statuszeile
   aircraft: [],
@@ -1176,6 +1191,18 @@ function drawRadar(){
       ctx.moveTo(x,y); ctx.lineTo(x+Math.cos(ta)*len, y+Math.sin(ta)*len); ctx.stroke();
     }
 
+    // Überflug-Vorhersage: gestrichelte Linie bis zum Punkt der größten Annäherung (im Radarkreis)
+    const ovh=state.overhead;
+    if(ovh && !state.track && a.hex===ovh.hex){
+      const [px,py]=toXY(ovh.lat,ovh.lon);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(c,c,R,0,Math.PI*2); ctx.clip();
+      ctx.strokeStyle=COL.txt; ctx.globalAlpha=.6; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(px,py); ctx.stroke();
+      ctx.setLineDash([]); ctx.beginPath(); ctx.arc(px,py,3.5,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+
     // Ziel: Quadrat
     const h=isSel?4:3;
     ctx.fillStyle=col; ctx.fillRect(x-h,y-h,h*2,h*2);
@@ -1224,7 +1251,8 @@ function fetchTimeout(url, ms=8000, headers){
 // behalten ihren ursprünglichen Zeitstempel, damit die Hochrechnung nicht vom Klick- oder Poll-Zeitpunkt abhängt.
 // Nebenbei wird die Positionshistorie für die Radarpunkte geführt.
 const posMemo=new Map(); // hex -> { lat, lon, ts, hist:[[lat,lon],...], vObs, interval }
-function stampPositions(list){
+// extraAge: wie viele Sekunden die Antwort vor dem Empfang schon alt war (Server-Cache), aus j.now
+function stampPositions(list, extraAge=0){
   const now=performance.now();
   for(const a of list){
     if(a.lat==null||a.lon==null) continue;
@@ -1233,7 +1261,7 @@ function stampPositions(list){
     if(prev && prev.lat===a.lat && prev.lon===a.lon){
       a.posTs=prev.ts;
     } else {
-      const age=(a.seenPos!=null && a.seenPos>=0 && a.seenPos<60) ? a.seenPos : 0;
+      const age=((a.seenPos!=null && a.seenPos>=0 && a.seenPos<60) ? a.seenPos : 0) + extraAge;
       a.posTs=now-age*1000;
       const hist=prev ? prev.hist.slice(-(HIST_LEN)) : [];
       hist.push([a.lat,a.lon]);
@@ -1276,7 +1304,11 @@ let lastFetchAt=0;
 // ungefähren Standort. Der Radius bekommt 1 NM Zuschlag; die App filtert selbst exakt nach Entfernung.
 function requestKey(){
   if(!state.center) return null;
-  return `lat=${state.center.lat.toFixed(3)}&lon=${state.center.lon.toFixed(3)}&radius=${state.radius+1}`;
+  // Mindestens 30 NM abfragen: Die Überflug-Vorhersage braucht auch Flugzeuge außerhalb des Radarbilds,
+  // die in den nächsten 3 Minuten herankommen (600 kt Grundgeschwindigkeit mit Rückenwind = 30 NM).
+  // Angezeigt wird weiterhin nur der gewählte Radius (inRange, Zeichnen und Antippen filtern selbst).
+  const r=Math.max(state.radius, OV_FETCH_NM);
+  return `lat=${state.center.lat.toFixed(3)}&lon=${state.center.lon.toFixed(3)}&radius=${r+1}`;
 }
 
 async function fetchData(){
@@ -1311,12 +1343,16 @@ async function fetchData(){
       state.track.lostSince=null; state.track.hex=hit.hex;
       list=[hit];
     }
-    stampPositions(list);
+    // Alter der Antwort beim Empfang (Server-Cache); auf 0 bis 15 s begrenzt, damit eine falsch
+    // gehende Handy-Uhr nichts verschlimmert
+    const extraAge=Number.isFinite(j.now) ? Math.min(15, Math.max(0, (Date.now()-j.now)/1000)) : 0;
+    stampPositions(list, extraAge);
 
     // Erfolg: Daten übernehmen
     state.aircraft=list;
     lastGoodTs=Date.now();
     consecutiveFails=0;
+    updateOverhead();
     updateCounts();
     updateStatus();
     if(state.track) followTrack(true);
@@ -1353,7 +1389,7 @@ function updateStatus(){
   clk.classList.toggle("warn", stale||lost);
 
   // Zweite Zeile nur, wenn es etwas zu sagen gibt
-  let msg="", warn=false, html=false;
+  let msg="", warn=false, html=false, ov=false;
   if(state.notice && Date.now()<state.notice.until){
     msg=state.notice.text; warn=true;
   } else {
@@ -1376,10 +1412,20 @@ function updateStatus(){
       msg="Lade Flugdaten …";
     } else if(stale){
       msg="Keine Verbindung. Angezeigt wird der letzte Stand."; warn=true;
+    } else {
+      // Normalbetrieb: Überflug-Vorhersage; abgelaufene Vorhersagen verwerfen
+      if(state.overhead && Date.now()-state.overhead.at>5000) state.overhead=null;
+      ov=!!state.overhead;
+      msg=ov ? overheadText(state.overhead) : "Kein Überflug in den nächsten 3 Minuten";
     }
   }
   el.hidden=!msg;
   el.classList.toggle("warn",warn);
+  el.classList.toggle("ov",ov);
+  // Die Vorhersage zählt laufend herunter; Screenreader sollen das nicht alle 2 s vorlesen
+  el.setAttribute("aria-live", ov ? "off" : "polite");
+  if(ov){ el.setAttribute("role","button"); el.tabIndex=0; }
+  else  { el.removeAttribute("role"); el.removeAttribute("tabindex"); }
   if(html) el.innerHTML=msg; else el.textContent=msg;
 }
 
@@ -1391,6 +1437,9 @@ function normalizeRaw(a){
     alt:(a.alt_baro!=null?a.alt_baro:a.alt_geom),
     gs:a.gs, track:a.track,
     seenPos:(typeof a.seen_pos==="number"?a.seen_pos:null), // Alter der Position in Sekunden
+    altGeom:(typeof a.alt_geom==="number"?a.alt_geom:null),  // geometrische Höhe (GNSS), unabhängig vom Luftdruck
+    vRate:(typeof a.geom_rate==="number"?a.geom_rate:(typeof a.baro_rate==="number"?a.baro_rate:null)), // ft/min
+    trackRate:(typeof a.track_rate==="number"?a.track_rate:null), // Kurvenrate in Grad/s, falls gesendet
     cat:(typeof a.category==="string"?a.category.toUpperCase():null), // ADS-B-Emitterkategorie (A1..B6)
     type:a.t, reg:a.r
   };
@@ -1415,11 +1464,19 @@ function updateCounts(){
 
 /* ============ GPS ============ */
 let gpsWatch=null;
+$("status").addEventListener("click", ()=>{ if($("status").classList.contains("ov")) openOverhead(); });
+$("status").addEventListener("keydown", e=>{
+  if((e.key==="Enter"||e.key===" ") && $("status").classList.contains("ov")){ e.preventDefault(); openOverhead(); }
+});
+
 function startGps(){
   if(!navigator.geolocation){ state.gpsError=2; updateStatus(); return; }
   if(gpsWatch!==null) return;
   gpsWatch=navigator.geolocation.watchPosition(
     p=>{ state.gpsError=null; state.gpsPos={lat:p.coords.latitude,lon:p.coords.longitude};
+         // Höhe nur übernehmen, wenn das Gerät sie halbwegs genau kennt; sonst Meereshöhe (siehe updateOverhead)
+         const ga=p.coords.altitude, gacc=p.coords.altitudeAccuracy;
+         if(typeof ga==="number" && typeof gacc==="number" && gacc<=50) state.gpsAlt=ga;
          if(!state.track){
            // Sofort nur abrufen, wenn sich die (gerundete) Anfrage wirklich ändert; iOS meldet auch im Stand
            // etwa jede Sekunde eine neue Position, das hätte das Rate-Limit des Servers gesprengt
@@ -1630,6 +1687,107 @@ function resetSatMap(){
   satTarget=null; stopSatAnim(); planeRot=null; planeIconKey=null;
   setSatPhoto(null);
   $("satwrap").style.display="none";
+}
+
+/* ============ Überflug-Vorhersage ("Gleich über dir") ============ */
+// Rechnet die Bahn jedes Flugzeugs für die nächsten 3 Minuten hoch (Kurs, Geschwindigkeit, Kurve,
+// Steig-/Sinkrate) und sucht den Moment der kleinsten Schrägentfernung zum eigenen Standort.
+// Lokales Koordinatensystem in Metern (Ost/Nord), auf 30 NM genau genug; die Erdkrümmung wird bei
+// der scheinbaren Höhe berücksichtigt (auf 55 km sind das gut 200 m).
+function predictPass(a, obs, obsAlt, nowPerf){
+  if(a.lat==null || a.lon==null || a.track==null || a.gs==null || a.alt==="ground") return null;
+  if(a.gs<30 && a.cat!=="A7") return null;                  // Stillstand/Rollen, Hubschrauber ausgenommen
+  const ftAlt=(a.altGeom!=null) ? a.altGeom : altFt(a);
+  if(ftAlt==null) return null;
+  const age=(a.posTs!=null) ? (nowPerf-a.posTs)/1000 : (a.seenPos||0);
+  if(!(age>=0 && age<=OV_MAX_AGE)) return null;
+
+  const cosLat=Math.cos(toRad(obs.lat));
+  let x=toRad(a.lon-obs.lon)*cosLat*EARTH_R;                 // Ost in m
+  let y=toRad(a.lat-obs.lat)*EARTH_R;                        // Nord in m
+  let h=ftAlt*FT;
+  const v=(a.spd!=null ? a.spd : a.gs)*1852/3600;            // m/s
+  const vz=(a.vRate||0)*FT/60;                               // m/s
+  const rate=(a.trackRate!=null) ? a.trackRate : (a.turn||0); // Grad/s
+  const hMin=Math.max(0,obsAlt);
+  let hdg=a.track, turned=0;
+
+  const advance=dt=>{
+    if(rate && turned<OV_MAX_TURN){
+      const d=Math.min(Math.abs(rate*dt), OV_MAX_TURN-turned);
+      hdg+=Math.sign(rate)*d; turned+=d;
+    }
+    const r=toRad(hdg);
+    x+=Math.sin(r)*v*dt; y+=Math.cos(r)*v*dt;
+    h=Math.min(15500, Math.max(hMin, h+vz*dt));
+  };
+  let best=null;
+  const sample=t=>{
+    const horiz=Math.hypot(x,y);
+    const dz=h-horiz*horiz/(2*EARTH_R)-obsAlt;               // scheinbare Höhe über dem Standort
+    const slant=Math.hypot(horiz,dz);
+    if(!best || slant<best.slant) best={t, slant, x, y, horiz, dz};
+  };
+
+  // Erst vom Zeitpunkt der Meldung bis jetzt vorrücken, dann ab jetzt abtasten
+  for(let tt=-age; tt<0; ){ const dt=Math.min(OV_STEP_S,-tt); advance(dt); tt+=dt; }
+  sample(0);
+  for(let t=OV_STEP_S; t<=OV_HORIZON_S; t+=OV_STEP_S){ advance(OV_STEP_S); sample(t); }
+
+  if(best.t===0) return null;                                 // entfernt sich bereits
+  const elev=Math.atan2(best.dz,best.horiz)*180/Math.PI;
+  if(best.slant>OV_MAX_SLANT || elev<OV_MIN_ELEV) return null;
+  return {
+    hex:a.hex, t:best.t, slant:best.slant, elev,
+    az:(Math.atan2(best.x,best.y)*180/Math.PI+360)%360,
+    lat:obs.lat+best.y/EARTH_R*180/Math.PI,
+    lon:obs.lon+best.x/(EARTH_R*cosLat)*180/Math.PI,
+    unsure:Math.abs(rate)>=1 || Math.abs(a.vRate||0)>=1000    // Kurvenflug oder starkes Steigen/Sinken
+  };
+}
+
+// Bester Kandidat nach Schrägentfernung; der bisherige bleibt, solange kein neuer deutlich näher kommt
+function updateOverhead(){
+  if(state.track || !state.gpsPos){ state.overhead=null; return; }
+  const obs=state.gpsPos, obsAlt=(state.gpsAlt!=null) ? state.gpsAlt : 0;
+  const nowPerf=performance.now(), prevHex=state.overhead?.hex;
+  let best=null, keep=null;
+  for(const a of state.aircraft){
+    const p=predictPass(a,obs,obsAlt,nowPerf);
+    if(!p) continue;
+    p.a=a;
+    if(p.hex===prevHex) keep=p;
+    if(!best || p.slant<best.slant) best=p;
+  }
+  const pick=(keep && best!==keep && best.slant>keep.slant*OV_SWITCH) ? keep : best;
+  state.overhead=pick ? {
+    hex:pick.hex, flight:pick.a.flight, type:pick.a.type, at:Date.now()+pick.t*1000,
+    az:pick.az, elev:pick.elev, slant:pick.slant, lat:pick.lat, lon:pick.lon, unsure:pick.unsure
+  } : null;
+}
+
+function overheadText(o){
+  const rem=Math.max(0,(o.at-Date.now())/1000);
+  let when;
+  if(rem<10) when="jetzt";
+  else {
+    const r=Math.round(rem/5)*5;                              // 5-s-Schritte: genauer ist die Prognose nicht
+    when=`in ${o.unsure?"ca. ":""}${Math.floor(r/60)}:${String(r%60).padStart(2,"0")}`;
+  }
+  const dir=COMPASS16[Math.round(o.az/22.5)%16];
+  const km=(o.slant/1000).toLocaleString("de-DE",{minimumFractionDigits:1,maximumFractionDigits:1});
+  const name=[o.flight||(o.hex||"").toUpperCase(), o.type].filter(Boolean).join(" ");
+  return `Über dir ${when} · ${dir} · ${Math.round(o.elev)}° · ${km} km · ${name}`;
+}
+
+// Antippen der Vorhersage öffnet die Details des Flugzeugs
+function openOverhead(){
+  const o=state.overhead;
+  if(!o || state.track || !state.center) return;
+  const a=state.aircraft.find(x=>x.hex===o.hex);
+  if(!a || a.lat==null) return;
+  openSheet(a, haversineNm(state.center.lat,state.center.lon,a.lat,a.lon),
+               bearingDeg(state.center.lat,state.center.lon,a.lat,a.lon));
 }
 
 /* ============ Weltweite Suche und Verfolgung ============ */
