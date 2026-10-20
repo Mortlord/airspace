@@ -60,6 +60,7 @@
   <nav class="toc" aria-label="Inhalt">
     <a href="#radar">Radar</a>
     <a href="#details">Details</a>
+    <a href="#ueberflug">Über dir</a>
     <a href="#wetter">Flughafenwetter</a>
     <a href="#bedienung">Suche und Umkreis</a>
     <a href="#standort">Standort</a>
@@ -96,6 +97,25 @@
   <h2 id="details">Details zu einem Flugzeug</h2>
   <p>Tippe auf ein Flugzeug, um die Details zu öffnen. Oben siehst du ein Satellitenbild, das dem Flugzeug folgt. Das Symbol in der Mitte zeigt die Art des Luftfahrzeugs, wie sie das Flugzeug selbst meldet: Verkehrsflugzeug, Großraumflugzeug, Kleinflugzeug, Hubschrauber, Segelflugzeug, Militärjet, Ballon oder Drohne. Meldet es keine Art, erscheint das Symbol für ein Verkehrsflugzeug. Zwischen zwei Positionsmeldungen rechnet die App die Position aus Kurs und Geschwindigkeit weiter, damit sich das Bild gleichmäßig bewegt. Wenn verfügbar, erscheinen außerdem ein Foto des Flugzeugs, Abflug- und Zielflughafen, Muster, Kennzeichen und Höhe.</p>
   <p>Routenangaben stammen aus Datenbanken, die einem Callsign eine Strecke zuordnen. Gerade Charter-Airlines verwenden Callsigns aber für wechselnde Strecken, sodass die Datenbank veraltet sein kann. Die App prüft deshalb, ob das Flugzeug überhaupt in der Nähe der genannten Strecke fliegt. Passt es nicht, steht dort „Route unklar“ statt einer falschen Route.</p>
+
+  <h2 id="ueberflug">Was gleich über dich hinwegfliegt</h2>
+  <p>In der Zeile unter der Überschrift zeigt die App, welches Flugzeug in den nächsten drei Minuten am nächsten an dir vorbeikommt, zum Beispiel:</p>
+  <p>„Über dir in 1:25 · O · 64° · 1,7 km · DLH4AB A320“</p>
+  <ul>
+    <li>„in 1:25“: die Zeit bis zum Moment, in dem das Flugzeug dir am nächsten ist, in Schritten von fünf Sekunden. Ist es so weit, steht dort „jetzt“.</li>
+    <li>„O“: die Himmelsrichtung, in der du es dann findest, in 16 Stufen von N über NNO und NO bis NNW.</li>
+    <li>„64°“: wie hoch du schauen musst. 0° ist der Horizont, 90° senkrecht über dir.</li>
+    <li>„1,7 km“: die Entfernung in direkter Linie zum Flugzeug, die Flughöhe eingerechnet.</li>
+    <li>Am Ende stehen Callsign und Muster.</li>
+  </ul>
+  <p>Berücksichtigt werden Flugzeuge, die dir auf höchstens 15 km nahekommen und dabei mindestens 15° über dem Horizont stehen. Kommen mehrere in Frage, zeigt die App das nächste. Trifft das auf keines zu, steht dort „Kein Überflug in den nächsten 3 Minuten“. Die Vorhersage berücksichtigt auch Flugzeuge, die noch außerhalb des eingestellten Umkreises sind.</p>
+  <p>Tippe auf die Zeile, um die Details des Flugzeugs zu öffnen. Im Radar führt eine gestrichelte Linie vom Flugzeug zu dem Punkt, an dem es dir am nächsten kommt.</p>
+  <div class="legend">
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="5" y="11" width="6" height="6" fill="#E8EEF5"/><line x1="8" y1="14" x2="48" y2="14" stroke="rgba(211,220,232,.6)" stroke-width="1" stroke-dasharray="4 4"/><circle cx="52" cy="14" r="3.5" fill="none" stroke="rgba(211,220,232,.6)" stroke-width="1"/></svg>
+    <span>Der Weg bis zur größten Annäherung; der Kreis markiert den Punkt.</span>
+  </div>
+  <p>Die App rechnet Kurs, Geschwindigkeit, Kurven sowie Steig- und Sinkflug weiter. Fliegt das Flugzeug gerade eine Kurve oder steigt oder sinkt es stark, wie oft in der Nähe von Flughäfen, ist die Vorhersage unsicherer; dann steht „ca.“ vor der Zeit. Ob das Flugzeug tatsächlich zu sehen ist, etwa bei Wolken oder Dunkelheit, kann die App nicht wissen.</p>
+  <p class="note">Die Höhe deines Standorts nimmt die App aus dem GPS, wenn das Gerät sie genau genug kennt, sonst geht sie von Meereshöhe aus. Bei tief fliegenden Flugzeugen kann der Winkel dann etwas zu groß sein. Während du ein Flugzeug weltweit verfolgst, ist die Vorhersage ausgeschaltet.</p>
 
   <h2 id="wetter">Flughafenwetter</h2>
   <p>Mit dem Schalter „Flughäfen mit Wetter“ zeigt das Radar die Flughäfen im Umkreis, die eine aktuelle Wettermeldung senden. Diese Meldungen heißen METAR, entstehen meist alle halbe Stunde und gelten für den Flughafen selbst, nicht für die ganze Umgebung. Kleinere Flugplätze ohne eigene Meldung erscheinen deshalb nicht.</p>
