@@ -939,6 +939,138 @@ const LS = {
 };
 try{ localStorage.removeItem("asl_mil"); }catch(e){}  // Altlast des entfernten Militär-Schalters
 
+/* ============ Sprache (Deutsch / Englisch) ============ */
+// Deutsch, wenn das Gerät Deutsch als bevorzugte Sprache meldet, sonst Englisch.
+// Bewusst ohne Umschalter und ohne Speicherung (keine Änderung an der Datenschutzerklärung nötig).
+const LANG = String((navigator.languages && navigator.languages[0]) || navigator.language || "en")
+  .toLowerCase().startsWith("de") ? "de" : "en";
+const LOCALE = LANG==="de" ? "de-DE" : "en-GB";   // en-GB: 24-Stunden-Uhr, Punkt als Dezimaltrenner
+const HELP_PAGE  = LANG==="de" ? "help.html"  : "help-en.html";
+const LEGAL_PAGE = LANG==="de" ? "legal.html" : "legal-en.html";
+const TXT = {
+  de:{
+    headline:"Flugzeuge im Umkreis",
+    count:n=>`${n} ${n===1?"Flugzeug":"Flugzeuge"} im Umkreis`,
+    hits:n=>`${n} Treffer im Umkreis`,
+    tracking:l=>`${l} wird verfolgt`,
+    dataTime:"Stand der Daten",
+    waitLoc:"Warte auf Standort …",
+    loading:"Lade Flugdaten …",
+    noConnStale:"Keine Verbindung. Angezeigt wird der letzte Stand.",
+    noConn:"Keine Verbindung.",
+    notReceived:cs=>`${cs} wird gerade nicht empfangen.`,
+    distAway:n=>`${n} NM von dir entfernt`,
+    locDenied:`Standort ist nicht freigegeben. <a href="help.html#standort">So gibst du ihn frei</a>`,
+    locFail:"Standort konnte nicht ermittelt werden.",
+    noOverhead:"Kein Überflug in den nächsten 3 Minuten",
+    ovPrefix:"Über dir", ovNow:"jetzt", ovApprox:"ca. ",
+    compass:["N","NNO","NO","ONO","O","OSO","SO","SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"],
+    badQuery:"Bitte ein vollständiges Callsign oder eine Flugnummer eingeben, z. B. HVN10 oder VN10.",
+    searching:q=>`Suche ${q} weltweit …`,
+    notFound:q=>`${q} wurde nicht gefunden. Weltweit braucht es das vollständige Callsign oder die Flugnummer, z. B. HVN10 oder VN10.`,
+    searchFail:"Die weltweite Suche ist gerade nicht möglich. Bitte später erneut versuchen.",
+    unknown:"Unbekannt",
+    routeDoubt:(f,t)=>`Route unklar. Die Datenbank nennt ${f} nach ${t}, das passt aber nicht zur aktuellen Position.`,
+    onGround:"am Boden",
+    fType:"Muster", fReg:"Kennzeichen", fAlt:"Flughöhe", fSpeed:"Geschwindigkeit", fTrack:"Kurs",
+    fDist:"Entfernung", fBrg:"Richtung", fTrend:"Trend", fElev:"Platzhöhe",
+    photo:"Foto",
+    flightDetails:"Flugdetails", airportWeather:"Flughafenwetter",
+    report:(utc,age,old)=>`Meldung von ${utc} UTC, ${age}${old?", möglicherweise veraltet":""}`,
+    ageMin:m=>`vor ${m} Min.`, ageH:(h,r)=>`vor ${h} Std.${r?` ${r} Min.`:""}`,
+    calm:"windstill", vrb:"umlaufend", windFrom:d=>`aus ${d}°`, gusts:g=>`Böen ${g} kt`,
+    windVar:(a,b)=>`schwankend ${a}° bis ${b}°`,
+    cWind:"Wind", cVis:"Sicht", cTemp:"Temperatur", cPress:"Luftdruck",
+    cavok:"CAVOK: Sicht, Wolken und Wetter ohne Einschränkung", dew:d=>`Taupunkt ${d} °C`,
+    cover:{FEW:"Wenige",SCT:"Aufgelockert",BKN:"Durchbrochen",OVC:"Bedeckt",OVX:"Vertikalsicht",VV:"Vertikalsicht"},
+    cb:", Gewitterwolke", tcu:", Quellwolke",
+    noCloudsBelow:"Keine Wolken unter 5.000 ft", noSigClouds:"Keine nennenswerten Wolken",
+    cloudsHdr:"Wolken (Höhe über Grund)",
+    wxCredit:"Wetter: Aviation Weather Center (NOAA)",
+    nosig:"keine wesentliche Änderung erwartet", tempo:"zeitweise", becmg:"übergehend",
+    cat:{VFR:"Sichtflugbedingungen",MVFR:"Eingeschränkte Sichtflugbedingungen",
+         IFR:"Instrumentenflugbedingungen",LIFR:"Schlechte Instrumentenflugbedingungen"},
+    // statische Oberfläche
+    trackBack:"Zurück zu meinem Standort", radarAria:"Radarbild der Flugzeuge im Umkreis",
+    mapCredit:"Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames",
+    searchPh:"Callsign oder Hex suchen", rangeLbl:"Umkreis in NM",
+    tLabels:"Beschriftung für alle Flugzeuge", tMap:"Karte im Hintergrund", tMetar:"Flughäfen mit Wetter",
+    help:"Hilfe", legal:"Impressum & Datenschutz", close:"Schließen", photoAlt:"Foto des Flugzeugs"
+  },
+  en:{
+    headline:"Aircraft nearby",
+    count:n=>`${n} aircraft nearby`,
+    hits:n=>`${n} ${n===1?"match":"matches"} nearby`,
+    tracking:l=>`Tracking ${l}`,
+    dataTime:"Data as of",
+    waitLoc:"Waiting for location …",
+    loading:"Loading flight data …",
+    noConnStale:"No connection. Showing the last known state.",
+    noConn:"No connection.",
+    notReceived:cs=>`${cs} is currently not being received.`,
+    distAway:n=>`${n} NM from you`,
+    locDenied:`Location access not granted. <a href="help-en.html#location">How to allow it</a>`,
+    locFail:"Your location could not be determined.",
+    noOverhead:"No overflight in the next 3 minutes",
+    ovPrefix:"Overhead", ovNow:"now", ovApprox:"approx. ",
+    compass:["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"],
+    badQuery:"Please enter a full callsign or flight number, e.g. HVN10 or VN10.",
+    searching:q=>`Searching worldwide for ${q} …`,
+    notFound:q=>`${q} was not found. A worldwide search needs the full callsign or flight number, e.g. HVN10 or VN10.`,
+    searchFail:"Worldwide search is not available right now. Please try again later.",
+    unknown:"Unknown",
+    routeDoubt:(f,t)=>`Route unclear. The database says ${f} to ${t}, but that does not match the current position.`,
+    onGround:"on ground",
+    fType:"Type", fReg:"Registration", fAlt:"Altitude", fSpeed:"Ground speed", fTrack:"Track",
+    fDist:"Distance", fBrg:"Bearing", fTrend:"Trend", fElev:"Elevation",
+    photo:"Photo",
+    flightDetails:"Flight details", airportWeather:"Airport weather",
+    report:(utc,age,old)=>`Report from ${utc} UTC, ${age}${old?", possibly outdated":""}`,
+    ageMin:m=>`${m} min ago`, ageH:(h,r)=>`${h} h${r?` ${r} min`:""} ago`,
+    calm:"calm", vrb:"variable", windFrom:d=>`from ${d}°`, gusts:g=>`gusts ${g} kt`,
+    windVar:(a,b)=>`varying ${a}° to ${b}°`,
+    cWind:"Wind", cVis:"Visibility", cTemp:"Temperature", cPress:"Pressure",
+    cavok:"CAVOK: no restrictions from visibility, clouds or weather", dew:d=>`Dew point ${d} °C`,
+    cover:{FEW:"Few",SCT:"Scattered",BKN:"Broken",OVC:"Overcast",OVX:"Vertical visibility",VV:"Vertical visibility"},
+    cb:", cumulonimbus", tcu:", towering cumulus",
+    noCloudsBelow:"No clouds below 5,000 ft", noSigClouds:"No significant clouds",
+    cloudsHdr:"Clouds (height above ground)",
+    wxCredit:"Weather: Aviation Weather Center (NOAA)",
+    nosig:"no significant change expected", tempo:"temporarily", becmg:"becoming",
+    cat:{VFR:"Visual flight conditions",MVFR:"Marginal visual flight conditions",
+         IFR:"Instrument flight conditions",LIFR:"Low instrument flight conditions"},
+    trackBack:"Back to my location", radarAria:"Radar display of nearby aircraft",
+    mapCredit:"Map: Esri, HERE, Garmin, © OpenStreetMap contributors; places: GeoNames",
+    searchPh:"Search callsign or hex", rangeLbl:"Radius in NM",
+    tLabels:"Labels for all aircraft", tMap:"Background map", tMetar:"Airports with weather",
+    help:"Help", legal:"Legal notice & privacy", close:"Close", photoAlt:"Photo of the aircraft"
+  }
+}[LANG];
+
+// Feste Texte der Oberfläche einsetzen (das HTML enthält die deutsche Fassung)
+(function applyStaticTexts(){
+  document.documentElement.lang=LANG;
+  if(LANG==="de") return;
+  const el=id=>document.getElementById(id);
+  el("headline").textContent=TXT.headline;
+  el("clock").title=TXT.dataTime; el("clock").setAttribute("aria-label",TXT.dataTime);
+  el("status").textContent=TXT.waitLoc;
+  const tb=el("trackBack"); tb.lastChild.textContent="\n      "+TXT.trackBack+"\n    ";
+  el("radar").setAttribute("aria-label",TXT.radarAria);
+  el("mapCredit").textContent=TXT.mapCredit;
+  el("search").placeholder=TXT.searchPh; el("search").setAttribute("aria-label",TXT.searchPh);
+  el("rangeLbl").textContent=TXT.rangeLbl;
+  el("toggleLabels").firstElementChild.textContent=TXT.tLabels;
+  el("toggleMap").firstElementChild.textContent=TXT.tMap;
+  el("toggleMetar").firstElementChild.textContent=TXT.tMetar;
+  const links=document.querySelectorAll("nav.foot a");
+  links[0].textContent=TXT.help;  links[0].href=HELP_PAGE;
+  links[1].textContent=TXT.legal; links[1].href=LEGAL_PAGE;
+  el("sheet").setAttribute("aria-label",TXT.flightDetails);
+  el("sheetClose").setAttribute("aria-label",TXT.close);
+  el("satInsetImg").alt=TXT.photoAlt;
+})();
+
 const COL = {           // Canvas-Farben (entsprechen den CSS-Tokens)
   bg:"#0F1B2D", line:"#2A3D57", dim:"#8193AB", txt:"#D3DCE8", target:[232,238,245], sel:"#D9A441"
 };
@@ -955,7 +1087,7 @@ const OV_MAX_AGE   = 30;     // s; ältere Positionen werden nicht hochgerechnet
 const OV_MAX_TURN  = 90;     // Grad; eine erkannte Kurve wird höchstens so weit fortgeschrieben
 const OV_SWITCH    = 0.8;    // neuer Kandidat muss 20 % näher kommen, sonst bleibt der bisherige
 const EARTH_R = 6371000, FT = 0.3048;
-const COMPASS16 = ["N","NNO","NO","ONO","O","OSO","SO","SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const COMPASS16 = TXT.compass;
 
 let state = {
   radius: LS.get("radius",25),
@@ -978,8 +1110,9 @@ let state = {
 const $ = id => document.getElementById(id);
 const toRad = d => d*Math.PI/180;
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmtInt = n => Number(n).toLocaleString("de-DE");
-const fmtTime = ts => new Date(ts).toLocaleTimeString("de-DE");
+const fmtInt = n => Number(n).toLocaleString(LOCALE);
+const fmtTime = ts => new Date(ts).toLocaleTimeString(LOCALE);
+const fmtDec = (n,dig) => Number(n).toLocaleString(LOCALE,{minimumFractionDigits:dig,maximumFractionDigits:dig});
 
 /* ============ Geometrie ============ */
 function haversineNm(lat1,lon1,lat2,lon2){
@@ -999,7 +1132,7 @@ function bearingDeg(lat1,lon1,lat2,lon2){
 // alt_baro kann "ground" sein
 function altFt(a){ return (typeof a.alt==="number") ? a.alt : (a.alt==="ground" ? 0 : null); }
 function altText(a){
-  if(a.alt==="ground") return "am Boden";
+  if(a.alt==="ground") return TXT.onGround;
   const f=altFt(a); return f==null ? null : fmtInt(Math.round(f/100)*100)+" ft";
 }
 function flText(a){
@@ -1120,7 +1253,7 @@ function drawRadar(){
   for(const i of [1,3,5]){
     const nm=+(state.radius*i/5).toFixed(1);
     const ang=toRad(-45);
-    ctx.fillText(String(nm).replace(".",","), c+Math.cos(ang)*R*i/5+4, c+Math.sin(ang)*R*i/5-6);
+    ctx.fillText(LANG==="de" ? String(nm).replace(".",",") : String(nm), c+Math.cos(ang)*R*i/5+4, c+Math.sin(ang)*R*i/5-6);
   }
 
   // Nordmarke
@@ -1396,28 +1529,27 @@ function updateStatus(){
   } else {
     state.notice=null;
     if(state.track){
-      if(lost){ msg=`${state.track.cs} wird gerade nicht empfangen.`; warn=true; }
-      else if(stale){ msg="Keine Verbindung."; warn=true; }
+      if(lost){ msg=TXT.notReceived(state.track.cs); warn=true; }
+      else if(stale){ msg=TXT.noConn; warn=true; }
       else {
         const t=state.aircraft[0];
         const d=(t && state.gpsPos) ? haversineNm(state.gpsPos.lat,state.gpsPos.lon,t.lat,t.lon) : null;
-        if(d!=null) msg=`${fmtInt(Math.round(d))} NM von dir entfernt`;
+        if(d!=null) msg=TXT.distAway(fmtInt(Math.round(d)));
       }
     } else if(state.gpsError && !state.center){
       warn=true; html=state.gpsError===1;
-      msg = html ? `Standort ist nicht freigegeben. <a href="help.html#standort">So gibst du ihn frei</a>`
-                 : "Standort konnte nicht ermittelt werden.";
+      msg = html ? TXT.locDenied : TXT.locFail;
     } else if(!state.center){
-      msg="Warte auf Standort …";
+      msg=TXT.waitLoc;
     } else if(!lastGoodTs){
-      msg="Lade Flugdaten …";
+      msg=TXT.loading;
     } else if(stale){
-      msg="Keine Verbindung. Angezeigt wird der letzte Stand."; warn=true;
+      msg=TXT.noConnStale; warn=true;
     } else {
       // Normalbetrieb: Überflug-Vorhersage; abgelaufene Vorhersagen verwerfen
       if(state.overhead && Date.now()-state.overhead.at>5000) state.overhead=null;
       ov=!!state.overhead;
-      msg=ov ? overheadText(state.overhead) : "Kein Überflug in den nächsten 3 Minuten";
+      msg=ov ? overheadText(state.overhead) : TXT.noOverhead;
     }
   }
   el.hidden=!msg;
@@ -1455,12 +1587,12 @@ function inRange(){
 }
 
 function updateCounts(){
-  if(state.track){ $("headline").textContent=`${state.track.label} wird verfolgt`; return; }
-  if(!state.center){ $("headline").textContent="Flugzeuge im Umkreis"; return; }
+  if(state.track){ $("headline").textContent=TXT.tracking(state.track.label); return; }
+  if(!state.center){ $("headline").textContent=TXT.headline; return; }
   const n=inRange().length;
   $("headline").textContent = state.query
-    ? `${n} Treffer im Umkreis`
-    : `${n} ${n===1?"Flugzeug":"Flugzeuge"} im Umkreis`;
+    ? TXT.hits(n)
+    : TXT.count(n);
 }
 
 /* ============ GPS ============ */
@@ -1677,8 +1809,8 @@ function setSatPhoto(a){
     $("satInsetImg").src=a._photo; inset.style.display="block";
     const who=a._photoCredit ? esc(a._photoCredit) : "Planespotters.net";
     credit.innerHTML = a._photoLink
-      ? `Foto: <a href="${esc(a._photoLink)}" target="_blank" rel="noopener">${who}, Planespotters.net</a>`
-      : `Foto: ${who}, Planespotters.net`;
+      ? `${TXT.photo}: <a href="${esc(a._photoLink)}" target="_blank" rel="noopener">${who}, Planespotters.net</a>`
+      : `${TXT.photo}: ${who}, Planespotters.net`;
   } else {
     inset.style.display="none"; credit.textContent="";
   }
@@ -1776,15 +1908,15 @@ function updateOverhead(){
 function overheadText(o){
   const rem=Math.max(0,(o.at-Date.now())/1000);
   let when;
-  if(rem<10) when="jetzt";
+  if(rem<10) when=TXT.ovNow;
   else {
     const r=Math.round(rem/5)*5;                              // 5-s-Schritte: genauer ist die Prognose nicht
-    when=`in ${o.unsure?"ca. ":""}${Math.floor(r/60)}:${String(r%60).padStart(2,"0")}`;
+    when=`in ${o.unsure?TXT.ovApprox:""}${Math.floor(r/60)}:${String(r%60).padStart(2,"0")}`;
   }
   const dir=COMPASS16[Math.round(o.az/22.5)%16];
-  const km=(o.slant/1000).toLocaleString("de-DE",{minimumFractionDigits:1,maximumFractionDigits:1});
+  const km=fmtDec(o.slant/1000,1);
   const name=[o.flight||(o.hex||"").toUpperCase(), o.type].filter(Boolean).join(" ");
-  return `Über dir ${when} · ${dir} · ${Math.round(o.elev)}° · ${km} km · ${name}`;
+  return `${TXT.ovPrefix} ${when} · ${dir} · ${Math.round(o.elev)}° · ${km} km · ${name}`;
 }
 
 // Antippen der Vorhersage öffnet die Details des Flugzeugs
@@ -1814,15 +1946,15 @@ async function runSearch(){
   if(!q) return;
   if(!state.track && inRange().length>0) return;
   if(state.track && (state.track.cs===q || state.track.label.startsWith(q+" "))) return;
-  if(!/^[A-Z0-9]{2,8}$/.test(q)){ setNotice("Bitte ein vollständiges Callsign oder eine Flugnummer eingeben, z. B. HVN10 oder VN10."); return; }
-  setNotice(`Suche ${q} weltweit …`, 15000);
+  if(!/^[A-Z0-9]{2,8}$/.test(q)){ setNotice(TXT.badQuery); return; }
+  setNotice(TXT.searching(q), 15000);
   try{
     const r=await fetchTimeout(`${BASE}/callsign?cs=${encodeURIComponent(q)}`);
     if(!r.ok) throw new Error("HTTP "+r.status);
     const j=await r.json();
     const list=(Array.isArray(j.ac)?j.ac:[]).map(normalizeRaw).filter(a=>a.lat!=null&&a.lon!=null);
     if(!list.length){
-      setNotice(`${q} wurde nicht gefunden. Weltweit braucht es das vollständige Callsign oder die Flugnummer, z. B. HVN10 oder VN10.`);
+      setNotice(TXT.notFound(q));
       return;
     }
     // Der Server übersetzt Flugnummern (VN10) in ICAO-Callsigns (HVN10); verfolgt wird das echte Callsign
@@ -1830,7 +1962,7 @@ async function runSearch(){
     startTrack(cs, list[0], cs===q ? cs : `${q} (${cs})`);
   }catch(e){
     console.warn("Suche:",e.message);
-    setNotice("Die weltweite Suche ist gerade nicht möglich. Bitte später erneut versuchen.");
+    setNotice(TXT.searchFail);
   }
 }
 
@@ -1882,7 +2014,7 @@ let sheetDist=null, sheetBrg=null;
 async function openSheet(a,dist,brg){
   a._satCentered=false;
   state.selectedApt=null;
-  $("sheet").setAttribute("aria-label","Flugdetails");
+  $("sheet").setAttribute("aria-label",TXT.flightDetails);
   state.selected=a;
   const rp=refPos();
   sheetDist=rp ? haversineNm(rp.lat,rp.lon,a.lat,a.lon) : null;
@@ -1950,12 +2082,12 @@ function renderSheet(a){
   const airline=(a.flight && /^[A-Z]{3}\d/.test(a.flight)) ? (NAMES.airlines[a.flight.slice(0,3)]||"") : "";
   const typeName=a.type ? (NAMES.types[a.type] ? `${NAMES.types[a.type]} (${a.type})` : a.type) : null;
 
-  let html=`<div class="cs-big">${esc(a.flight||a.hex||"Unbekannt")}</div>`;
+  let html=`<div class="cs-big">${esc(a.flight||a.hex||TXT.unknown)}</div>`;
   if(airline) html+=`<div class="sub">${esc(airline)}</div>`;
 
   if((fromCode||toCode) && a._route.plausible===false){
     // Callsign-Datenbanken sind bei Charterflügen oft veraltet: nicht als Tatsache anzeigen
-    html+=`<p class="route-doubt">Route unklar. Die Datenbank nennt ${esc(fromCode||"?")} nach ${esc(toCode||"?")}, das passt aber nicht zur aktuellen Position.</p>`;
+    html+=`<p class="route-doubt">${TXT.routeDoubt(esc(fromCode||"?"),esc(toCode||"?"))}</p>`;
   } else if(fromCode||toCode){
     html+=`<div class="route">
       <div><div class="ap">${esc(fromCode||"?")}</div><div class="apname">${esc(from.city||"")}</div></div>
@@ -1965,13 +2097,13 @@ function renderSheet(a){
   }
 
   const rows=[
-    ["Muster", typeName],
-    ["Kennzeichen", a.reg],
-    ["Flughöhe", altText(a)],
-    ["Geschwindigkeit", a.gs!=null ? Math.round(a.gs)+" kt" : null],
-    ["Kurs", a.track!=null ? Math.round(a.track)+"°" : null],
-    ["Entfernung", sheetDist!=null ? sheetDist.toFixed(1).replace(".",",")+" NM" : null],
-    ["Richtung", sheetBrg!=null ? Math.round(sheetBrg)+"°" : null],
+    [TXT.fType, typeName],
+    [TXT.fReg, a.reg],
+    [TXT.fAlt, altText(a)],
+    [TXT.fSpeed, a.gs!=null ? Math.round(a.gs)+" kt" : null],
+    [TXT.fTrack, a.track!=null ? Math.round(a.track)+"°" : null],
+    [TXT.fDist, sheetDist!=null ? fmtDec(sheetDist,1)+" NM" : null],
+    [TXT.fBrg, sheetBrg!=null ? Math.round(sheetBrg)+"°" : null],
     ["Hex", a.hex ? a.hex.toUpperCase() : null]
   ].filter(r=>r[1]!=null && r[1]!=="");
   html+=`<dl class="facts">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
@@ -2031,37 +2163,57 @@ async function fetchMetar(){
 }
 
 // ---- Dekodierung ----
-const WX_PRECIP={DZ:"Nieselregen",RA:"Regen",SN:"Schnee",SG:"Schneegriesel",IC:"Eisnadeln",
-  PL:"Eiskörner",GR:"Hagel",GS:"Graupel",UP:"Niederschlag"};
-const WX_SHOWER={RA:"Regenschauer",SN:"Schneeschauer",GR:"Hagelschauer",GS:"Graupelschauer",
-  PL:"Eiskörnerschauer",SG:"Schneegrieselschauer"};
-const WX_OTHER={BR:"feuchter Dunst",FG:"Nebel",FU:"Rauch",VA:"Vulkanasche",DU:"Staub",SA:"Sand",
-  HZ:"trockener Dunst",PO:"Staubwirbel",SQ:"Sturmböen",FC:"Trichterwolke",SS:"Sandsturm",DS:"Staubsturm"};
+const WX = {
+  de:{
+    precip:{DZ:"Nieselregen",RA:"Regen",SN:"Schnee",SG:"Schneegriesel",IC:"Eisnadeln",
+      PL:"Eiskörner",GR:"Hagel",GS:"Graupel",UP:"Niederschlag"},
+    shower:{RA:"Regenschauer",SN:"Schneeschauer",GR:"Hagelschauer",GS:"Graupelschauer",
+      PL:"Eiskörnerschauer",SG:"Schneegrieselschauer"},
+    other:{BR:"feuchter Dunst",FG:"Nebel",FU:"Rauch",VA:"Vulkanasche",DU:"Staub",SA:"Sand",
+      HZ:"trockener Dunst",PO:"Staubwirbel",SQ:"Sturmböen",FC:"Trichterwolke",SS:"Sandsturm",DS:"Staubsturm"},
+    and:" und ", ts:"Gewitter", with:" mit ", showers:"Schauer", showerSuffix:n=>n+"schauer",
+    fzfg:"gefrierender Nebel", fz:"gefrierender ", mifg:"flacher Nebel", bcfg:"Nebelschwaden",
+    prfg:"teilweise Nebel", blsn:"Schneetreiben", drsn:"Schneefegen",
+    light:" (leicht)", heavy:" (stark)", vc:" in der Umgebung"
+  },
+  en:{
+    precip:{DZ:"drizzle",RA:"rain",SN:"snow",SG:"snow grains",IC:"ice crystals",
+      PL:"ice pellets",GR:"hail",GS:"small hail",UP:"precipitation"},
+    shower:{RA:"rain showers",SN:"snow showers",GR:"hail showers",GS:"small hail showers",
+      PL:"ice pellet showers",SG:"snow grain showers"},
+    other:{BR:"mist",FG:"fog",FU:"smoke",VA:"volcanic ash",DU:"dust",SA:"sand",
+      HZ:"haze",PO:"dust whirls",SQ:"squalls",FC:"funnel cloud",SS:"sandstorm",DS:"duststorm"},
+    and:" and ", ts:"Thunderstorm", with:" with ", showers:"Showers", showerSuffix:n=>n+" showers",
+    fzfg:"freezing fog", fz:"freezing ", mifg:"shallow fog", bcfg:"fog patches",
+    prfg:"partial fog", blsn:"blowing snow", drsn:"drifting snow",
+    light:" (light)", heavy:" (heavy)", vc:" in the vicinity"
+  }
+}[LANG];
 const WX_RE=/^(\+|-|VC)?((?:MI|PR|BC|DR|BL|SH|TS|FZ)*)((?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PO|SQ|FC|SS|DS)*)$/;
-const COVER={FEW:{t:"Wenige",w:25},SCT:{t:"Aufgelockert",w:50},BKN:{t:"Durchbrochen",w:80},
-  OVC:{t:"Bedeckt",w:100},OVX:{t:"Vertikalsicht",w:100},VV:{t:"Vertikalsicht",w:100}};
+const COVER={FEW:{t:TXT.cover.FEW,w:25},SCT:{t:TXT.cover.SCT,w:50},BKN:{t:TXT.cover.BKN,w:80},
+  OVC:{t:TXT.cover.OVC,w:100},OVX:{t:TXT.cover.OVX,w:100},VV:{t:TXT.cover.VV,w:100}};
 
 function wxText(tok){
   const m=WX_RE.exec(tok); if(!m || (!m[2] && !m[3])) return null;
   const pairs=s=>(s.match(/../g)||[]);
   const desc=pairs(m[2]), ph=pairs(m[3]);
-  const name=p=>WX_PRECIP[p]||WX_OTHER[p]||p;
-  const and=a=>a.length>1 ? a.slice(0,-1).join(", ")+" und "+a[a.length-1] : (a[0]||"");
+  const name=p=>WX.precip[p]||WX.other[p]||p;
+  const and=a=>a.length>1 ? a.slice(0,-1).join(", ")+WX.and+a[a.length-1] : (a[0]||"");
   let t;
-  if(desc.includes("TS"))      t="Gewitter"+(ph.length?" mit "+and(ph.map(name)):"");
-  else if(desc.includes("SH")) t=ph.length ? and(ph.map(p=>WX_SHOWER[p]||name(p)+"schauer")) : "Schauer";
-  else if(desc.includes("FZ")) t=ph.includes("FG") ? "gefrierender Nebel" : "gefrierender "+and(ph.map(name));
-  else if(desc.includes("MI") && ph.includes("FG")) t="flacher Nebel";
-  else if(desc.includes("BC") && ph.includes("FG")) t="Nebelschwaden";
-  else if(desc.includes("PR") && ph.includes("FG")) t="teilweise Nebel";
-  else if(desc.includes("BL") && ph.includes("SN")) t="Schneetreiben";
-  else if(desc.includes("DR") && ph.includes("SN")) t="Schneefegen";
+  if(desc.includes("TS"))      t=WX.ts+(ph.length?WX.with+and(ph.map(name)):"");
+  else if(desc.includes("SH")) t=ph.length ? and(ph.map(p=>WX.shower[p]||WX.showerSuffix(name(p)))) : WX.showers;
+  else if(desc.includes("FZ")) t=ph.includes("FG") ? WX.fzfg : WX.fz+and(ph.map(name));
+  else if(desc.includes("MI") && ph.includes("FG")) t=WX.mifg;
+  else if(desc.includes("BC") && ph.includes("FG")) t=WX.bcfg;
+  else if(desc.includes("PR") && ph.includes("FG")) t=WX.prfg;
+  else if(desc.includes("BL") && ph.includes("SN")) t=WX.blsn;
+  else if(desc.includes("DR") && ph.includes("SN")) t=WX.drsn;
   else t=and(ph.map(name));
   if(!t) return null;
   t=t.charAt(0).toUpperCase()+t.slice(1);
-  if(m[1]==="-") t+=" (leicht)";
-  else if(m[1]==="+") t+=" (stark)";
-  else if(m[1]==="VC") t+=" in der Umgebung";
+  if(m[1]==="-") t+=WX.light;
+  else if(m[1]==="+") t+=WX.heavy;
+  else if(m[1]==="VC") t+=WX.vc;
   const hazard=desc.includes("TS")||desc.includes("FZ")||m[1]==="+"||
                ph.some(p=>["GR","SQ","FC","SS","DS","VA"].includes(p));
   return {t, hazard};
@@ -2149,7 +2301,6 @@ function drawAirports(c,R,toXY,font){
 }
 
 // ---- Kachel ----
-const fmtDec=(n,dig)=>Number(n).toLocaleString("de-DE",{minimumFractionDigits:dig,maximumFractionDigits:dig});
 function visText(m){
   if(m==null) return null;
   if(m>=9999) return "10 km+";
@@ -2159,17 +2310,16 @@ function visText(m){
 }
 function ageText(ms){
   const min=Math.max(0,Math.round(ms/60000));
-  if(min<60) return `vor ${min} Min.`;
+  if(min<60) return TXT.ageMin(min);
   const h=Math.floor(min/60), r=min%60;
-  return `vor ${h} Std.${r?` ${r} Min.`:""}`;
+  return TXT.ageH(h,r);
 }
 function trendText(t){
   if(!t) return null;
-  if(t==="NOSIG") return "keine wesentliche Änderung erwartet";
-  return t.replace(/^TEMPO\b/,"zeitweise").replace(/^BECMG\b/,"übergehend");
+  if(t==="NOSIG") return TXT.nosig;
+  return t.replace(/^TEMPO\b/,TXT.tempo).replace(/^BECMG\b/,TXT.becmg);
 }
-const CAT_TEXT={VFR:"Sichtflugbedingungen",MVFR:"Eingeschränkte Sichtflugbedingungen",
-  IFR:"Instrumentenflugbedingungen",LIFR:"Schlechte Instrumentenflugbedingungen"};
+const CAT_TEXT=TXT.cat;
 
 function openAirportSheet(st){
   if($("sheet").classList.contains("open") && state.selected){ state.selected=null; resetSatMap(); }
@@ -2177,7 +2327,7 @@ function openAirportSheet(st){
   state.selectedApt=st.icao;
   setSatPhoto(null);
   $("satwrap").style.display="none";
-  $("sheet").setAttribute("aria-label","Flughafenwetter");
+  $("sheet").setAttribute("aria-label",TXT.airportWeather);
   $("sheet").classList.add("open");
   renderMetarSheet(st);
   requestDraw();
@@ -2194,25 +2344,25 @@ function renderMetarSheet(st){
     (d.cat?`<span class="cat${(d.cat==="IFR"||d.cat==="LIFR")?" alert":""}" title="${esc(CAT_TEXT[d.cat]||"")}">${esc(d.cat)}</span>`:"")+
     `</div>`;
   if(name) html+=`<div class="sub">${esc(name)}</div>`;
-  if(utc) html+=`<div class="sub${old?" warn":""}">Meldung von ${utc} UTC, ${ageText(age)}${old?", möglicherweise veraltet":""}</div>`;
+  if(utc) html+=`<div class="sub${old?" warn":""}">${TXT.report(utc,ageText(age),old)}</div>`;
 
   // Wind
   let windV, windD="";
-  if(d.wspd===0 && d.wgst==null){ windV="windstill"; }
+  if(d.wspd===0 && d.wgst==null){ windV=TXT.calm; }
   else if(d.wspd!=null){
     windV=`${Math.round(d.wspd)} kt`;
-    const parts=[d.wdir==="VRB" ? "umlaufend" : (d.wdir!=null ? `aus ${String(Math.round(d.wdir)).padStart(3,"0")}°` : null)];
-    if(d.wgst) parts.push(`Böen ${Math.round(d.wgst)} kt`);
-    if(d.wvar) parts.push(`schwankend ${String(d.wvar[0]).padStart(3,"0")}° bis ${String(d.wvar[1]).padStart(3,"0")}°`);
+    const parts=[d.wdir==="VRB" ? TXT.vrb : (d.wdir!=null ? TXT.windFrom(String(Math.round(d.wdir)).padStart(3,"0")) : null)];
+    if(d.wgst) parts.push(TXT.gusts(Math.round(d.wgst)));
+    if(d.wvar) parts.push(TXT.windVar(String(d.wvar[0]).padStart(3,"0"),String(d.wvar[1]).padStart(3,"0")));
     windD=parts.filter(Boolean).join(", ");
   }
   const arrow=(typeof d.wdir==="number" && d.wspd)
     ? `<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(${(d.wdir+180)%360}deg)"><path d="M12 20V5M7 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : "";
   const cells=[
-    ["Wind", windV ? arrow+esc(windV) : "–", windD],
-    ["Sicht", esc(visText(d.visM)||"–"), d.cavok ? "CAVOK: Sicht, Wolken und Wetter ohne Einschränkung" : ""],
-    ["Temperatur", d.temp!=null ? `${Math.round(d.temp)} °C` : "–", d.dewp!=null ? `Taupunkt ${Math.round(d.dewp)} °C` : ""],
-    ["Luftdruck", d.qnh!=null ? `${Math.round(d.qnh)} hPa` : "–", d.qnh!=null ? "QNH" : ""]
+    [TXT.cWind, windV ? arrow+esc(windV) : "–", windD],
+    [TXT.cVis, esc(visText(d.visM)||"–"), d.cavok ? TXT.cavok : ""],
+    [TXT.cTemp, d.temp!=null ? `${Math.round(d.temp)} °C` : "–", d.dewp!=null ? TXT.dew(Math.round(d.dewp)) : ""],
+    [TXT.cPress, d.qnh!=null ? `${Math.round(d.qnh)} hPa` : "–", d.qnh!=null ? "QNH" : ""]
   ];
   html+=`<div class="wxgrid">${cells.map(([k,v,dd])=>
     `<div class="wxcell"><div class="k">${k}</div><div class="v">${v}</div>${dd?`<div class="d">${esc(dd)}</div>`:""}</div>`).join("")}</div>`;
@@ -2225,31 +2375,31 @@ function renderMetarSheet(st){
   if(d.clouds.length){
     cl=d.clouds.map(c=>{
       const cv=COVER[c.cover]||{t:c.cover,w:50};
-      const typ=c.type==="CB" ? ", Gewitterwolke" : c.type==="TCU" ? ", Quellwolke" : "";
+      const typ=c.type==="CB" ? TXT.cb : c.type==="TCU" ? TXT.tcu : "";
       return `<div class="cloud${c.type==="CB"?" alert":""}"><span>${esc(cv.t+typ)}</span>`+
         `<span class="bar"><i style="width:${cv.w}%"></i></span>`+
         `<span class="ft">${c.base!=null?fmtInt(c.base)+" ft":"–"}</span></div>`;
     }).join("");
   } else if(d.cavok){
-    cl=`<div class="cloud"><span>Keine Wolken unter 5.000 ft</span><span></span><span></span></div>`;
+    cl=`<div class="cloud"><span>${TXT.noCloudsBelow}</span><span></span><span></span></div>`;
   } else if(d.noClouds){
-    cl=`<div class="cloud"><span>Keine nennenswerten Wolken</span><span></span><span></span></div>`;
+    cl=`<div class="cloud"><span>${TXT.noSigClouds}</span><span></span><span></span></div>`;
   }
-  if(cl) html+=`<div class="clouds"><div class="k">Wolken (Höhe über Grund)</div>${cl}</div>`;
+  if(cl) html+=`<div class="clouds"><div class="k">${TXT.cloudsHdr}</div>${cl}</div>`;
 
   // Weitere Angaben
   const rp=refPos();
   const rows=[
-    ["Trend", trendText(d.trend)],
-    ["Entfernung", rp ? haversineNm(rp.lat,rp.lon,st.lat,st.lon).toFixed(1).replace(".",",")+" NM" : null],
-    ["Richtung", rp ? Math.round(bearingDeg(rp.lat,rp.lon,st.lat,st.lon))+"°" : null],
-    ["Platzhöhe", st.elev!=null ? fmtInt(Math.round(st.elev*3.28084/10)*10)+" ft" : null]
+    [TXT.fTrend, trendText(d.trend)],
+    [TXT.fDist, rp ? fmtDec(haversineNm(rp.lat,rp.lon,st.lat,st.lon),1)+" NM" : null],
+    [TXT.fBrg, rp ? Math.round(bearingDeg(rp.lat,rp.lon,st.lat,st.lon))+"°" : null],
+    [TXT.fElev, st.elev!=null ? fmtInt(Math.round(st.elev*3.28084/10)*10)+" ft" : null]
   ].filter(r=>r[1]!=null);
   if(rows.length) html+=`<dl class="facts">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
 
   if(st.raw) html+=`<p class="rawob">${esc(st.raw)}</p>`;
   $("photoCredit").textContent="";
-  html+=`<p class="credit" style="margin-top:12px">Wetter: Aviation Weather Center (NOAA)</p>`;
+  html+=`<p class="credit" style="margin-top:12px">${TXT.wxCredit}</p>`;
   $("sheetBody").innerHTML=html;
 }
 
