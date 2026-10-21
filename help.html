@@ -47,13 +47,19 @@
     footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--txt-dim);font-size:15px;
       display:flex;flex-wrap:wrap;gap:6px 20px}
     footer a{color:var(--txt-dim)}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .lang{color:var(--txt-dim);font-size:16px;text-decoration:none}
+    .lang:hover{color:var(--txt)}
   </style>
 </head>
 <body>
-  <a class="back" href="index.html">
+  <div class="top">
+    <a class="back" href="index.html">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
     Zurück zum Radar
   </a>
+    <a class="lang" href="help-en.html" hreflang="en" lang="en">English</a>
+  </div>
 
   <h1>So liest du das Radar</h1>
   <p class="lead">AirSpace Live zeigt die Flugzeuge rund um deinen Standort, ähnlich wie ein Bildschirm in der Flugsicherung.</p>

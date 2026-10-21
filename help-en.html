@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F1B2D">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Help | AirSpace Live</title>
+  <style>
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:400;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-400.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:600;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-600.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:700;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-700.woff2') format('woff2')}
+    :root{
+      --bg:#0F1B2D; --surface:#16263D; --line:#2A3D57;
+      --txt:#D3DCE8; --txt-dim:#8193AB; --sel:#D9A441;
+      --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0 auto;max-width:40rem;color:var(--txt);font-family:var(--font);
+      font-size:18px;line-height:1.55;font-variant-numeric:tabular-nums;
+      padding:calc(env(safe-area-inset-top) + 20px) 22px calc(env(safe-area-inset-bottom) + 48px)}
+    a{color:var(--txt);text-decoration-color:var(--txt-dim);text-underline-offset:2px}
+    a:hover{text-decoration-color:var(--txt)}
+    :focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+    .back{display:inline-flex;align-items:center;gap:6px;color:var(--txt-dim);text-decoration:none;font-size:16px}
+    .back:hover{color:var(--txt)}
+    h1{font-size:32px;font-weight:700;line-height:1.15;margin:28px 0 8px}
+    .lead{color:var(--txt-dim);margin:0 0 28px}
+    .toc{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 8px;font-size:16px}
+    .toc a{color:var(--txt-dim)}
+    h2{font-size:24px;font-weight:700;margin:44px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+    h3{font-size:19px;font-weight:600;margin:26px 0 6px}
+    p,ul,dl{margin:0 0 12px}
+    ul{padding-left:1.2em}
+    li{margin:0 0 4px}
+    li::marker{color:var(--txt-dim)}
+    address{font-style:normal;margin:0 0 12px}
+    .note{color:var(--txt-dim);font-size:16px}
+    .legend{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center;margin:8px 0 16px}
+    .legend svg{display:block}
+    kbd{font-family:inherit;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:0 5px}
+    footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--txt-dim);font-size:15px;
+      display:flex;flex-wrap:wrap;gap:6px 20px}
+    footer a{color:var(--txt-dim)}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .lang{color:var(--txt-dim);font-size:16px;text-decoration:none}
+    .lang:hover{color:var(--txt)}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="index.html">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      Back to radar
+    </a>
+    <a class="lang" href="help.html" hreflang="de" lang="de">Deutsch</a>
+  </div>
+
+  <h1>How to read the radar</h1>
+  <p class="lead">AirSpace Live shows the aircraft around your location, much like a screen in air traffic control.</p>
+  <nav class="toc" aria-label="Contents">
+    <a href="#radar">Radar</a>
+    <a href="#details">Details</a>
+    <a href="#overhead">Overhead</a>
+    <a href="#weather">Airport weather</a>
+    <a href="#controls">Search and radius</a>
+    <a href="#location">Location</a>
+    <a href="#install">Install</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+
+  <h2 id="radar">The radar display</h2>
+  <p>You are the small cross in the middle. North is always up. The rings divide the selected radius into five equal steps; the numbers on the rings give the distance in nautical miles (1 NM = 1.852 km).</p>
+  <p>The background map is true to scale: the outer ring lies exactly at the selected distance. The radar also shows the names of the largest places with at least 10,000 inhabitants, up to twelve depending on space. The “Background map” switch hides the map, for example to save mobile data.</p>
+
+  <div class="legend">
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="17" y="11" width="6" height="6" fill="#E8EEF5"/><line x1="20" y1="14" x2="52" y2="6" stroke="#E8EEF5" stroke-width="1.2"/></svg>
+    <span>An aircraft. The line shows where it will be in one minute. The longer the line, the faster it flies.</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="4" cy="20" r="1.4" fill="rgba(232,238,245,.25)"/><circle cx="10" cy="18.5" r="1.4" fill="rgba(232,238,245,.4)"/><circle cx="16" cy="17" r="1.4" fill="rgba(232,238,245,.6)"/><rect x="21" y="12" width="6" height="6" fill="#E8EEF5"/></svg>
+    <span>The dots behind it are its last reported positions. They show whether an aircraft is flying straight or turning.</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="6" y="11" width="6" height="6" fill="rgba(232,238,245,.42)"/><rect x="29" y="11" width="6" height="6" fill="rgba(232,238,245,.7)"/><rect x="52" y="11" width="6" height="6" fill="#E8EEF5"/></svg>
+    <span>Brightness shows altitude in three steps: below 10,000 feet dim, up to 25,000 feet medium, above that bright.</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="20" y="11" width="8" height="8" fill="#D9A441"/></svg>
+    <span>The aircraft you have just tapped.</span>
+  </div>
+
+  <h3>Labels</h3>
+  <p>If you like, a small data block appears next to an aircraft:</p>
+  <ul>
+    <li>top line: the callsign, i.e. the flight’s identifier in radio communication, e.g. DLH4AB for a Lufthansa flight. If it is missing, the transponder’s hex code is shown instead.</li>
+    <li>bottom line: the flight level and the ground speed in knots. FL360 means 36,000 feet; GND means the aircraft is parked or taxiing on the ground.</li>
+  </ul>
+  <p>The “Labels for all aircraft” switch shows the data blocks for every aircraft. When it is off, you only see the block of the selected aircraft.</p>
+
+  <h2 id="details">Aircraft details</h2>
+  <p>Tap an aircraft to open its details. At the top you see a satellite image that follows the aircraft. The symbol in the middle shows the kind of aircraft as reported by the aircraft itself: airliner, wide-body, light aircraft, helicopter, glider, military jet, balloon or drone. If it reports no kind, the airliner symbol is shown. Between two position reports, the app projects the position from heading and speed so that the picture moves smoothly. Where available, you also see a photo of the aircraft, departure and destination airport, aircraft type, registration and altitude.</p>
+  <p>Route information comes from databases that link a callsign to a route. Charter airlines in particular reuse callsigns for changing routes, so the database can be out of date. The app therefore checks whether the aircraft is actually flying near the stated route. If it is not, you see “Route unclear” instead of a wrong route.</p>
+
+  <h2 id="overhead">What is about to fly over you</h2>
+  <p>The line below the heading shows which aircraft will pass closest to you in the next three minutes, for example:</p>
+  <p>“Overhead in 1:25 · E · 64° · 1.7 km · DLH4AB A320”</p>
+  <ul>
+    <li>“in 1:25”: the time until the aircraft is closest to you, in steps of five seconds. When the moment has come, it says “now”.</li>
+    <li>“E”: the compass direction in which you will find it, in 16 steps from N via NNE and NE to NNW.</li>
+    <li>“64°”: how high to look. 0° is the horizon, 90° is straight above you.</li>
+    <li>“1.7 km”: the straight-line distance to the aircraft, altitude included.</li>
+    <li>At the end: callsign and aircraft type.</li>
+  </ul>
+  <p>The app considers aircraft that pass within 20 km in a straight line, altitude included, and are at least 15° above the horizon at that moment. If several qualify, it shows the closest one. If none does, the line reads “No overflight in the next 3 minutes”. The forecast also includes aircraft that are still outside the selected radius.</p>
+  <p>Tap the line to open the aircraft’s details. On the radar, a dashed line leads from the aircraft to the point where it will be closest to you.</p>
+  <div class="legend">
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="5" y="11" width="6" height="6" fill="#E8EEF5"/><line x1="8" y1="14" x2="48" y2="14" stroke="rgba(211,220,232,.6)" stroke-width="1" stroke-dasharray="4 4"/><circle cx="52" cy="14" r="3.5" fill="none" stroke="rgba(211,220,232,.6)" stroke-width="1"/></svg>
+    <span>The path to the closest approach; the circle marks the point.</span>
+  </div>
+  <p>The app projects heading, speed, turns, climbs and descents. If the aircraft is turning or climbing or descending steeply, as often happens near airports, the forecast is less reliable; “approx.” then appears before the time. Whether the aircraft is actually visible, for example with clouds or at night, the app cannot know.</p>
+  <p class="note">The app takes the altitude of your location from GPS if your device knows it accurately enough; otherwise it assumes sea level. For low-flying aircraft the angle may then be slightly too large. While you are tracking an aircraft worldwide, the forecast is switched off.</p>
+
+  <h2 id="weather">Airport weather</h2>
+  <p>With the “Airports with weather” switch, the radar shows the airports within the radius that send a current weather report. These reports are called METAR, are usually issued every half hour and apply to the airport itself, not to the whole surrounding area. Smaller airfields without their own report therefore do not appear.</p>
+
+  <div class="legend">
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="rgba(129,147,171,.9)" stroke-width="1.4"/><text x="28" y="18" font-size="11" fill="rgba(129,147,171,.9)" font-family="inherit">EDSB</text></svg>
+    <span>An airport with a weather report and its four-letter ICAO code.</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="#D9A441" stroke-width="1.4"/></svg>
+    <span>Reduced visibility or low clouds, so that flights there operate under instrument flight rules (IFR or LIFR).</span>
+
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="#D9A441" stroke-width="1.4"/><circle cx="20" cy="14" r="1.6" fill="#D9A441"/></svg>
+    <span>Thunderstorms, thunderclouds or other hazardous weather such as hail or freezing rain. Aircraft usually fly around such areas.</span>
+  </div>
+
+  <p>Tap an airport to open its weather card. If an aircraft and an airport are close together, the aircraft always opens. The card shows:</p>
+  <ul>
+    <li>Wind: speed in knots and the direction it is blowing from; the arrow shows where it is blowing to. Gusts and variable directions are listed below.</li>
+    <li>Visibility: “10 km+” means 10 kilometres or more. CAVOK means that visibility, clouds and weather impose no restrictions.</li>
+    <li>Temperature and dew point: if the two are close, the air is humid and fog is more likely.</li>
+    <li>Air pressure (QNH) in hectopascals, converted to sea level.</li>
+    <li>Cloud layers with their height above the airport in feet. The bar shows how much of the sky is covered.</li>
+    <li>Flight category: VFR stands for good visibility, MVFR for reduced, IFR and LIFR for poor to very poor conditions.</li>
+    <li>Trend: the expected development over the next two hours, if the airport reports it.</li>
+  </ul>
+  <p>Times are given in UTC, the universal time of aviation. Central Europe is one hour ahead in winter and two hours in summer; Vietnam is seven hours ahead. If a report is older than 75 minutes, it is marked “possibly outdated”. At the very bottom you find the original report.</p>
+
+  <h2 id="controls">Search and radius</h2>
+  <p>The search field filters by callsign or hex code. Part of it is enough, e.g. “EZY” for all easyJet flights. Matches stay bright, all other aircraft are dimmed.</p>
+  <h3 id="worldwide">Finding aircraft worldwide</h3>
+  <p>If there is no match within the radius, the app searches worldwide after you press <kbd>Enter</kbd> or “Search” on the keyboard. This requires the full callsign or flight number; parts are not enough here.</p>
+  <p>Callsign and flight number are not the same: in radio communication airlines use a three-letter code (HVN10 for Vietnam Airlines), tickets show the two-character code (VN10). The app understands both. This only works for airlines whose callsign matches the flight number, though. Many airlines, such as easyJet or Ryanair, use their own combinations of letters and digits; there only the callsign helps, which flight tracking websites, for example, display.</p>
+  <p>Once the aircraft is found, the radar jumps to it and shows only this one aircraft in the centre, with the map following along. The heading shows how far away it is from you. “Back to my location” returns you to the normal radar. If the aircraft drops out of reception, for example after landing, the last known state remains on screen.</p>
+  <p>You can choose a radius between 5 and 100 NM. Small values are good for spotting aircraft above you, large values show the traffic of a whole region.</p>
+
+  <h2 id="location">Allowing location access</h2>
+  <p>Without your location the app does not know where the centre of the radar is. If the app says that location access is not granted, you declined the request. This is how to allow it afterwards:</p>
+  <h3>iPhone and iPad</h3>
+  <p>Settings, then Privacy &amp; Security, then Location Services. Turn Location Services on and set Safari Websites to “While Using the App”. Then reload the app.</p>
+  <h3>Android with Chrome</h3>
+  <p>Tap the icon to the left of the address, then Permissions, then allow Location. For an installed app, use the app info in the Android settings.</p>
+  <h3>Computer</h3>
+  <p>Click the icon to the left of the address and allow location for this site. Without GPS, the browser estimates your location from Wi-Fi; this can be off by a few hundred metres.</p>
+
+  <h2 id="install">Installing as an app</h2>
+  <p>AirSpace Live can be added to your home screen like an app and then opens full screen.</p>
+  <ul>
+    <li>iPhone and iPad (Safari): tap the Share icon, then “Add to Home Screen”.</li>
+    <li>Android (Chrome): open the three-dot menu, then “Install app” or “Add to Home screen”.</li>
+  </ul>
+
+  <h2 id="faq">Frequently asked questions</h2>
+  <h3>Why is an aircraft I can see in the sky missing?</h3>
+  <p>The data comes from volunteer receiving stations that pick up the aircraft’s ADS-B signals. Not every area is equally well covered, especially close to the ground and in valleys. Some aircraft also do not transmit their position, such as older light aircraft or many military aircraft.</p>
+  <h3>How up to date are the positions?</h3>
+  <p>The app requests new data every two seconds; the reported positions are usually a few seconds old. To make the aircraft move smoothly, the radar projects their position between two reports from heading and speed. In turns, an aircraft may therefore briefly appear next to its actual position until the next report arrives. The time of the last successful update is shown at the top right.</p>
+  <h3>What does “No connection” mean?</h3>
+  <p>No request has succeeded for at least 15 seconds, for example because of poor reception; the app does not show brief interruptions. Until then the radar shows the last known state and updates itself as soon as the connection is back.</p>
+  <h3>Can I rely on the data?</h3>
+  <p>No. AirSpace Live is a hobby project and not intended for navigation or any other safety-critical purpose.</p>
+
+  <p>Any questions? Write to <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>.</p>
+
+  <footer>
+    <a href="legal-en.html">Legal notice and privacy</a>
+    <a href="index.html">To the radar</a>
+  </footer>
+</body>
+</html>

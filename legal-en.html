@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F1B2D">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Legal notice and privacy | AirSpace Live</title>
+  <style>
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:400;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-400.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:600;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-600.woff2') format('woff2')}
+    @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:700;font-display:swap;
+      src:url('fonts/barlow-semi-condensed-700.woff2') format('woff2')}
+    :root{
+      --bg:#0F1B2D; --surface:#16263D; --line:#2A3D57;
+      --txt:#D3DCE8; --txt-dim:#8193AB; --sel:#D9A441;
+      --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0 auto;max-width:40rem;color:var(--txt);font-family:var(--font);
+      font-size:18px;line-height:1.55;font-variant-numeric:tabular-nums;
+      padding:calc(env(safe-area-inset-top) + 20px) 22px calc(env(safe-area-inset-bottom) + 48px)}
+    a{color:var(--txt);text-decoration-color:var(--txt-dim);text-underline-offset:2px}
+    a:hover{text-decoration-color:var(--txt)}
+    :focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+    .back{display:inline-flex;align-items:center;gap:6px;color:var(--txt-dim);text-decoration:none;font-size:16px}
+    .back:hover{color:var(--txt)}
+    h1{font-size:32px;font-weight:700;line-height:1.15;margin:28px 0 8px}
+    .lead{color:var(--txt-dim);margin:0 0 28px}
+    .toc{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 8px;font-size:16px}
+    .toc a{color:var(--txt-dim)}
+    h2{font-size:24px;font-weight:700;margin:44px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+    h3{font-size:19px;font-weight:600;margin:26px 0 6px}
+    p,ul,dl{margin:0 0 12px}
+    ul{padding-left:1.2em}
+    li{margin:0 0 4px}
+    li::marker{color:var(--txt-dim)}
+    address{font-style:normal;margin:0 0 12px}
+    .note{color:var(--txt-dim);font-size:16px}
+    .legend{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center;margin:8px 0 16px}
+    .legend svg{display:block}
+    kbd{font-family:inherit;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:0 5px}
+    footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--txt-dim);font-size:15px;
+      display:flex;flex-wrap:wrap;gap:6px 20px}
+    footer a{color:var(--txt-dim)}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .lang{color:var(--txt-dim);font-size:16px;text-decoration:none}
+    .lang:hover{color:var(--txt)}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="index.html">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      Back to radar
+    </a>
+    <a class="lang" href="legal.html" hreflang="de" lang="de">Deutsch</a>
+  </div>
+
+  <h1>Legal notice and privacy</h1>
+  <p class="lead">AirSpace Live is a private, non-commercial hobby project. This page explains who is behind it and which data goes where when you use the app.</p>
+  <p class="note">This is a translation provided for convenience. Only the <a href="legal.html" hreflang="de" lang="de">German version</a> is legally binding.</p>
+  <nav class="toc" aria-label="Contents">
+    <a href="#imprint">Legal notice</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#rights">Your rights</a>
+  </nav>
+
+  <h2 id="imprint">Legal notice (Impressum)</h2>
+  <h3>Information pursuant to § 5 DDG (German Digital Services Act)</h3>
+  <address>
+    M. Staaden<br>
+    Kaiser-Joseph-Straße 254<br>
+    79098 Freiburg im Breisgau<br>
+    Germany<br>
+    Email: <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>
+  </address>
+
+  <h3>Liability for content</h3>
+  <p>The flight data shown comes from publicly receivable ADS-B signals collected by third parties. It is displayed without any guarantee of completeness, accuracy or timeliness. The app is not intended for navigation or any other safety-critical purpose.</p>
+
+  <h3>Data sources</h3>
+  <p>The operator has no influence on the content of these services:</p>
+  <ul>
+    <li><a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> and <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a>: aircraft position data</li>
+    <li><a href="https://www.adsbdb.com" target="_blank" rel="noopener">adsbdb.com</a> and <a href="https://aerodatabox.com" target="_blank" rel="noopener">AeroDataBox</a>: route and airline information</li>
+    <li><a href="https://www.geonames.org" target="_blank" rel="noopener">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>): place names on the radar, delivered as a file by the app itself</li>
+    <li><a href="https://www.planespotters.net" target="_blank" rel="noopener">Planespotters.net</a>: aircraft photos, each credited with the photographer’s name</li>
+    <li><a href="https://aviationweather.gov" target="_blank" rel="noopener">Aviation Weather Center</a> (NOAA, USA): airport weather reports (METAR)</li>
+    <li><a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>: background map (Dark Gray Canvas; map data Esri, HERE, Garmin, © OpenStreetMap contributors) and satellite images in the detail view (World Imagery; Esri, Maxar, Earthstar Geographics)</li>
+  </ul>
+
+  <h2 id="privacy">Privacy</h2>
+
+  <h3>Controller</h3>
+  <address>
+    M. Staaden, Kaiser-Joseph-Straße 254, 79098 Freiburg im Breisgau, Germany<br>
+    Email: <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>
+  </address>
+
+  <h3>The essentials</h3>
+  <ul>
+    <li>No cookies, no tracking, no web analytics, no user account.</li>
+    <li>Your location is needed to find the aircraft around you. For this it is sent to the app’s server and is not stored there permanently.</li>
+    <li>Map images and aircraft photos are loaded by your browser directly from Esri and Planespotters. These services see your IP address; from the background map, Esri can also roughly tell where you are. The background map can be switched off.</li>
+    <li>Fonts and the Leaflet map library are delivered by the app itself. No third-party servers are contacted for them.</li>
+  </ul>
+
+  <h3>Location</h3>
+  <p>When it starts, the app asks for location access through your browser. While the app is open, it sends your coordinates, rounded to about 100 m, together with a radius to the operator’s server (api.adsb-radar.de) about every two seconds. The radius is the one you selected, but at least 30 NM, so that the “Overhead” forecast also covers approaching aircraft. The server uses this to request the aircraft within that radius from adsb.fi, or alternatively from adsb.lol. The coordinates are passed on to these services, but your IP address is not, because the request comes from the server and not from your device.</p>
+  <p>The coordinates are used only to answer the respective request and are not stored permanently. Without location access the app shows no aircraft.</p>
+  <p>The legal basis is your consent given through the browser’s location prompt (Art. 6(1)(a) GDPR, § 25(1) TDDDG). You can withdraw it at any time in the settings of your browser or device; processing carried out until then remains unaffected.</p>
+
+  <h3>Route information</h3>
+  <p>When you tap an aircraft, the app asks the operator’s server for the departure and destination airport for its callsign. The server answers from its cache or via adsbdb.com or AeroDataBox. The callsign and the aircraft’s current position are transmitted so that the server can check whether the route matches; your location is not transmitted. The legal basis is the legitimate interest in operating the app (Art. 6(1)(f) GDPR).</p>
+
+  <h3>Worldwide callsign search</h3>
+  <p>If the search does not find a callsign within the selected radius, the app asks the operator’s server for that callsign. The server looks it up at adsb.fi, or alternatively at adsb.lol. Only the callsign searched for is transmitted, not your location. While you are tracking an aircraft, the app repeats this request about every two seconds and does not request any aircraft around your location. The legal basis is the legitimate interest in operating the app (Art. 6(1)(f) GDPR).</p>
+
+  <h3>Airport weather (METAR)</h3>
+  <p>If the “Airports with weather” switch is on, the app requests the weather reports of the airports within the selected radius from the operator’s server. Your coordinates, rounded to about 1 km, and the radius are transmitted. The server rounds the position further to about 25 km and queries the Aviation Weather Center of the US weather service NOAA with this coarse area. Neither your IP address nor your exact location is passed on, because the request comes from the server and not from your device. The server caches the results for up to ten minutes, without any link to individual users. The legal basis is the legitimate interest in operating the app (Art. 6(1)(f) GDPR).</p>
+
+  <h3>Maps (Esri)</h3>
+  <p>The maps are provided by Environmental Systems Research Institute, Inc. (Esri), Redlands, USA. Your browser loads the map tiles directly from Esri. For technical reasons, Esri receives your IP address and the map section displayed:</p>
+  <ul>
+    <li>Background map behind the radar: the section is centred on your location, or on the aircraft’s position while you are tracking one. From this, Esri can roughly infer where you are. You can switch the map off in the app with the “Background map” switch; no tiles are then loaded for it.</li>
+    <li>Satellite image in the detail view: the section shows the surroundings of the selected aircraft, not your location.</li>
+  </ul>
+  <p>Esri is certified under the EU-US Data Privacy Framework, on which the transfer to the USA is based (Art. 45 GDPR). The legal basis is the legitimate interest in a clear presentation (Art. 6(1)(f) GDPR). More information: <a href="https://www.esri.com/de-de/privacy/privacy-statements/" target="_blank" rel="noopener">Esri privacy statements</a>.</p>
+
+  <h3>Aircraft photos (Planespotters.net)</h3>
+  <p>If a selected aircraft has a known registration, your browser asks Planespotters.net directly for a photo and loads it from there. Planespotters receives your IP address and the aircraft’s registration. The legal basis is the legitimate interest in a clear presentation (Art. 6(1)(f) GDPR). More information: <a href="https://www.planespotters.net/legal/privacypolicy/de" target="_blank" rel="noopener">Planespotters.net privacy policy</a>.</p>
+
+  <h3>Settings in your browser</h3>
+  <p>The app stores the selected radius and the settings for labels, background map and airport weather in your browser’s local storage (localStorage). This information does not leave your device. You can delete it at any time via your browser settings. Storage is necessary for the function you requested (§ 25(2) no. 2 TDDDG).</p>
+
+  <h3>Usage measurement</h3>
+  <p>To estimate approximate usage, the operator’s server counts distinct visitors within a day. The IP address is not stored for this. From it, the server creates a non-reversible hash value using a random value that changes daily; the hash is deleted after 24 hours. It is not possible to identify individual persons from it. The legal basis is the legitimate interest in data-minimising usage measurement (Art. 6(1)(f) GDPR).</p>
+
+  <h3>Server, hosting and transmission</h3>
+  <p>For technical reasons, every request to the operator’s server contains your IP address. The server uses it only briefly to answer the request and to fend off overload from too many requests, and does not store it permanently.</p>
+  <p>The operator’s server runs at Railway Corp., San Francisco, USA. The app itself is delivered via GitHub Pages (GitHub, Inc., San Francisco, USA). Cloudflare, Inc., San Francisco, USA, acts as a proxy in front of both for DNS, security and performance. For technical reasons, these providers process your IP address and may keep server logs. The transfer to the USA is based on standard contractual clauses (Art. 46(2)(c) GDPR) or, where the provider is certified, on the EU-US Data Privacy Framework (Art. 45 GDPR). The legal basis is the legitimate interest in secure technical operation (Art. 6(1)(f) GDPR).</p>
+  <p class="note">More information: <a href="https://railway.com/legal/privacy" target="_blank" rel="noopener">Railway</a>, <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub</a>, <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare</a>.</p>
+
+  <h2 id="rights">Your rights</h2>
+  <p>You have the right of access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and to object to processing based on legitimate interests (Art. 21). Since the app does not store user data permanently, the operator usually holds no data that could be attributed to you. Requests are welcome at <a href="mailto:kontakt@adsb-radar.de">kontakt@adsb-radar.de</a>.</p>
+  <p>You can also lodge a complaint with a data protection supervisory authority (Art. 77 GDPR). The competent authority is the <a href="https://www.baden-wuerttemberg.datenschutz.de" target="_blank" rel="noopener">State Commissioner for Data Protection and Freedom of Information of Baden-Württemberg</a>.</p>
+
+  <footer>
+    <span>Last updated: October 2026</span>
+    <a href="help-en.html">Help</a>
+    <a href="index.html">To the radar</a>
+  </footer>
+</body>
+</html>
