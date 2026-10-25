@@ -751,6 +751,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .bgmap.off{display:none}
   .map-credit{margin:2px 0 8px;font-size:11px;color:var(--txt-dim);text-align:right;min-height:15px}
   .map-credit.off{visibility:hidden}
+  .data-credit{margin:2px 0 0;font-size:11px;color:var(--txt-dim);text-align:right}
+  .data-credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
   /* Suche */
   .search{display:block;width:100%;background:var(--surface);border:1px solid var(--line);
@@ -879,6 +881,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="bgmap" id="bgmap" aria-hidden="true"></div>
     <canvas id="radar" aria-label="Radarbild der Flugzeuge im Umkreis"></canvas>
   </div>
+  <p class="data-credit" id="dataCredit"><span id="dataCreditLbl">Flugdaten:</span> <a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> · <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a> (<a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL</a>)</p>
   <p class="map-credit" id="mapCredit">Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames</p>
 
   <input class="search" id="search" type="search" placeholder="Callsign oder Hex suchen"
@@ -992,6 +995,7 @@ const TXT = {
          IFR:"Instrumentenflugbedingungen",LIFR:"Schlechte Instrumentenflugbedingungen"},
     // statische Oberfläche
     trackBack:"Zurück zu meinem Standort", radarAria:"Radarbild der Flugzeuge im Umkreis",
+    dataCredit:"Flugdaten:",
     mapCredit:"Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames",
     searchPh:"Callsign oder Hex suchen", rangeLbl:"Umkreis in NM",
     tLabels:"Beschriftung für alle Flugzeuge", tMap:"Karte im Hintergrund", tMetar:"Flughäfen mit Wetter",
@@ -1040,6 +1044,7 @@ const TXT = {
     cat:{VFR:"Visual flight conditions",MVFR:"Marginal visual flight conditions",
          IFR:"Instrument flight conditions",LIFR:"Low instrument flight conditions"},
     trackBack:"Back to my location", radarAria:"Radar display of nearby aircraft",
+    dataCredit:"Flight data:",
     mapCredit:"Map: Esri, HERE, Garmin, © OpenStreetMap contributors; places: GeoNames",
     searchPh:"Search callsign or hex", rangeLbl:"Radius in NM",
     tLabels:"Labels for all aircraft", tMap:"Background map", tMetar:"Airports with weather",
@@ -1057,6 +1062,7 @@ const TXT = {
   el("status").textContent=TXT.waitLoc;
   const tb=el("trackBack"); tb.lastChild.textContent="\n      "+TXT.trackBack+"\n    ";
   el("radar").setAttribute("aria-label",TXT.radarAria);
+  el("dataCreditLbl").textContent=TXT.dataCredit;
   el("mapCredit").textContent=TXT.mapCredit;
   el("search").placeholder=TXT.searchPh; el("search").setAttribute("aria-label",TXT.searchPh);
   el("rangeLbl").textContent=TXT.rangeLbl;
