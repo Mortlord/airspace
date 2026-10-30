@@ -2035,7 +2035,14 @@ async function openSheet(a,dist,brg){
   if(cs){
     try{
       // Position des Flugzeugs mitschicken: der Server prüft, ob die Route dazu passt
-      const pos=(a.lat!=null&&a.lon!=null) ? `&lat=${a.lat.toFixed(3)}&lon=${a.lon.toFixed(3)}` : "";
+      let pos=(a.lat!=null&&a.lon!=null) ? `&lat=${a.lat.toFixed(3)}&lon=${a.lon.toFixed(3)}` : "";
+      // Höhe, Kurs und Steigrate helfen dem Server, falsche Routen zu erkennen (z. B. Anflug auf EAP)
+      if(pos){
+        const alt=(typeof a.alt==="number") ? a.alt : (a.alt==="ground" ? 0 : null);
+        if(alt!=null) pos+=`&alt=${Math.round(alt)}`;
+        if(typeof a.track==="number") pos+=`&trk=${Math.round(a.track)}`;
+        if(typeof a.vRate==="number") pos+=`&vr=${Math.round(a.vRate)}`;
+      }
       const r=await fetch(`${BASE}/route?callsign=${encodeURIComponent(cs)}${pos}`,{cache:"no-store"});
       const j=await r.json();
       a._route=j;
