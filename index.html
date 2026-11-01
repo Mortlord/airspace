@@ -761,6 +761,25 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .search:focus{border-color:var(--txt-dim)}
   .search::placeholder{color:var(--txt-dim)}
 
+  /* Flugzeugliste */
+  .aclist{margin:14px 0 0}
+  .aclist[hidden]{display:none}
+  .aclist table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:15px}
+  .aclist th{color:var(--txt-dim);font-weight:400;font-size:13px;text-align:left;
+    padding:0 3px 6px;border-bottom:1px solid var(--line)}
+  .aclist td{padding:9px 3px;border-bottom:1px solid var(--line);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .aclist .num{text-align:right;font-variant-numeric:tabular-nums}
+  .aclist .cs{font-weight:600}
+  .aclist .dim{color:var(--txt-dim)}
+  .aclist tbody tr{cursor:pointer}
+  .aclist tbody tr:hover td{background:var(--surface)}
+  .aclist tbody tr:focus-visible{outline:2px solid var(--sel);outline-offset:-2px}
+  .aclist tr.sel td{color:var(--sel)}
+  .aclist .c-cs{width:21%} .aclist .c-al{width:22%} .aclist .c-rt{width:22%}
+  .aclist .c-fl{width:13%} .aclist .c-nm{width:11%} .aclist .c-kt{width:11%}
+  .aclist .empty{margin:10px 0 0;color:var(--txt-dim)}
+
   /* Umkreis */
   .field-lbl{display:block;color:var(--txt-dim);font-size:15px;margin:22px 0 8px}
   .seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
@@ -888,8 +907,18 @@ svg.leaflet-image-layer.leaflet-interactive path {
          autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"
          aria-label="Callsign oder Hex suchen">
 
+  <div class="aclist" id="acList" hidden>
+    <table aria-labelledby="headline">
+      <colgroup><col class="c-cs"><col class="c-al"><col class="c-rt"><col class="c-fl"><col class="c-nm"><col class="c-kt"></colgroup>
+      <thead><tr><th id="lhCs">Callsign</th><th id="lhAl">Airline</th><th id="lhRt">Route</th>
+        <th id="lhFl" class="num">Höhe</th><th id="lhNm" class="num">NM</th><th id="lhKt" class="num">kt</th></tr></thead>
+      <tbody id="acRows"></tbody>
+    </table>
+    <p class="empty" id="acEmpty" hidden></p>
+  </div>
+
   <span class="field-lbl" id="rangeLbl">Umkreis in NM</span>
-  <div class="seg" role="group" aria-labelledby="rangeLbl">
+  <div class="seg" id="rangeSeg" role="group" aria-labelledby="rangeLbl">
     <button data-r="5">5</button>
     <button data-r="10">10</button>
     <button data-r="25">25</button>
@@ -909,6 +938,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <span>Flughäfen mit Wetter</span>
     <span class="sw" id="swMetar" role="switch" aria-checked="false" tabindex="0"></span>
   </div>
+
+  <div id="ownerSlot" hidden></div>
 
   <nav class="foot">
     <a href="help.html">Hilfe</a>
@@ -999,6 +1030,8 @@ const TXT = {
     mapCredit:"Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames",
     searchPh:"Callsign oder Hex suchen", rangeLbl:"Umkreis in NM",
     tLabels:"Beschriftung für alle Flugzeuge", tMap:"Karte im Hintergrund", tMetar:"Flughäfen mit Wetter",
+    lhCs:"Callsign", lhAl:"Airline", lhRt:"Route", lhFl:"Höhe", lhNm:"NM", lhKt:"kt",
+    listEmpty:"Gerade keine Flugzeuge im Umkreis.", listMatchEmpty:"Kein Treffer im Umkreis.",
     help:"Hilfe", legal:"Impressum & Datenschutz", close:"Schließen", photoAlt:"Foto des Flugzeugs"
   },
   en:{
@@ -1048,6 +1081,8 @@ const TXT = {
     mapCredit:"Map: Esri, HERE, Garmin, © OpenStreetMap contributors; places: GeoNames",
     searchPh:"Search callsign or hex", rangeLbl:"Radius in NM",
     tLabels:"Labels for all aircraft", tMap:"Background map", tMetar:"Airports with weather",
+    lhCs:"Callsign", lhAl:"Airline", lhRt:"Route", lhFl:"Alt", lhNm:"NM", lhKt:"kt",
+    listEmpty:"No aircraft nearby right now.", listMatchEmpty:"No match nearby.",
     help:"Help", legal:"Legal notice & privacy", close:"Close", photoAlt:"Photo of the aircraft"
   }
 }[LANG];
@@ -1069,6 +1104,7 @@ const TXT = {
   el("toggleLabels").firstElementChild.textContent=TXT.tLabels;
   el("toggleMap").firstElementChild.textContent=TXT.tMap;
   el("toggleMetar").firstElementChild.textContent=TXT.tMetar;
+  for(const k of ["lhCs","lhAl","lhRt","lhFl","lhNm","lhKt"]) el(k).textContent=TXT[k];
   const links=document.querySelectorAll("nav.foot a");
   links[0].textContent=TXT.help;  links[0].href=HELP_PAGE;
   links[1].textContent=TXT.legal; links[1].href=LEGAL_PAGE;
@@ -1078,8 +1114,20 @@ const TXT = {
 })();
 
 const COL = {           // Canvas-Farben (entsprechen den CSS-Tokens)
-  bg:"#0F1B2D", line:"#2A3D57", dim:"#8193AB", txt:"#D3DCE8", target:[232,238,245], sel:"#D9A441"
+  bg:"#0F1B2D", line:"#2A3D57", dim:"#8193AB", txt:"#D3DCE8", target:[232,238,245], sel:"#D9A441",
+  dimRgb:[129,147,171]
 };
+// Liest die Farben aus den CSS-Variablen; so folgt das Radar jeder Darstellung, die dort umgeschaltet wird.
+function hexRgb(h){ const m=/^#([0-9a-f]{6})$/i.exec(String(h).trim()); if(!m) return null;
+  const n=parseInt(m[1],16); return [n>>16&255, n>>8&255, n&255]; }
+function readTheme(){
+  const cs=getComputedStyle(document.documentElement), v=k=>cs.getPropertyValue(k).trim();
+  for(const [k,var_] of [["bg","--bg"],["line","--line"],["dim","--txt-dim"],["txt","--txt"],["sel","--sel"]]){
+    if(hexRgb(v(var_))) COL[k]=v(var_);
+  }
+  COL.target=hexRgb(v("--target"))||COL.target;
+  COL.dimRgb=hexRgb(COL.dim)||COL.dimRgb;
+}
 const HIST_LEN = 5;     // Anzahl Historienpunkte je Flugzeug
 
 // Überflug-Vorhersage ("Gleich über dir"), siehe updateOverhead()
@@ -1119,6 +1167,30 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
 const fmtInt = n => Number(n).toLocaleString(LOCALE);
 const fmtTime = ts => new Date(ts).toLocaleTimeString(LOCALE);
 const fmtDec = (n,dig) => Number(n).toLocaleString(LOCALE,{minimumFractionDigits:dig,maximumFractionDigits:dig});
+
+/* ============ Andockstellen für owner.js ============ */
+// Gäste laden owner.js nie; dann bleibt AS.source leer und AirSpace verhält sich wie bisher.
+// source: {id, label, center:{lat,lon}, url:()=>string, headers:()=>object}
+const AS = {
+  source: null,
+  get state(){ return state; },
+  BASE, LS, TXT, LANG, $, esc,
+  requestDraw, fetchData, updateStatus, updateCounts, updateBgMap, setNotice,
+  fetchRadius(){ return Math.max(state.radius, OV_FETCH_NM)+1; },
+  refreshTheme(){ readTheme(); requestDraw(); },
+  setSource(src){
+    if($("sheet").classList.contains("open")) closeSheet();
+    fetchGen++;
+    AS.source=src||null;
+    state.track=null; $("trackBar").hidden=true;
+    state.notice=null; state.aircraft=[]; state.overhead=null;
+    lastGoodTs=0; consecutiveFails=0; backoffUntil=0;
+    state.center=(AS.source && AS.source.center) || state.gpsPos;
+    updateBgMap(true); updateCounts(); updateStatus(); requestDraw();
+    fetchData();
+  }
+};
+window.AS = AS;
 
 /* ============ Geometrie ============ */
 function haversineNm(lat1,lon1,lat2,lon2){
@@ -1456,21 +1528,27 @@ async function fetchData(){
   const gen=fetchGen;
   fetchBusy=true; lastFetchAt=Date.now();
   try{
-    let url;
+    let url, hdrs;
     if(state.track){
       url=`${BASE}/callsign?cs=${encodeURIComponent(state.track.cs)}`;
+    } else if(AS.source){
+      url=AS.source.url(); hdrs=AS.source.headers ? AS.source.headers() : undefined;
     } else {
       const key=requestKey();
       if(!key){ return; } // wartet auf GPS-Fix
       url=`${BASE}/aircraft?${key}`;
     }
-    const r=await fetchTimeout(url);
+    const r=await fetchTimeout(url, 8000, hdrs);
     if(r.status===429){ backoffUntil=Date.now()+10000; throw new Error("HTTP 429"); }
     if(!r.ok) throw new Error("HTTP "+r.status);
     const j=await r.json();
     if(gen!==fetchGen) return;
-    if(!Array.isArray(j.ac)) throw new Error("malformed response"); // kein gültiges Datenpaket -> alte Daten behalten
-    let list=j.ac.map(normalizeRaw);
+    // Server-Quellen liefern ac[], der Heim-Pi (Feeder) aircraft[]
+    const raw=Array.isArray(j.ac) ? j.ac : (AS.source && Array.isArray(j.aircraft) ? j.aircraft : null);
+    if(!raw) throw new Error("malformed response"); // kein gültiges Datenpaket -> alte Daten behalten
+    let list=raw.map(normalizeRaw);
+    // Der Feeder führt Flugzeuge noch Minuten nach der letzten Position; alte Positionen nicht zeigen
+    if(AS.source && !state.track) list=list.filter(a=>a.seenPos==null || a.seenPos<=60);
 
     if(state.track){
       // Nur das verfolgte Flugzeug; bei mehreren Treffern dasselbe wie bisher (Hex)
@@ -1485,7 +1563,9 @@ async function fetchData(){
     }
     // Alter der Antwort beim Empfang (Server-Cache); auf 0 bis 15 s begrenzt, damit eine falsch
     // gehende Handy-Uhr nichts verschlimmert
-    const extraAge=Number.isFinite(j.now) ? Math.min(15, Math.max(0, (Date.now()-j.now)/1000)) : 0;
+    // Der Feeder liefert now in Sekunden, der Server in Millisekunden
+    const nowMs=Number.isFinite(j.now) ? (j.now<1e12 ? j.now*1000 : j.now) : NaN;
+    const extraAge=Number.isFinite(nowMs) ? Math.min(15, Math.max(0, (Date.now()-nowMs)/1000)) : 0;
     stampPositions(list, extraAge);
 
     // Erfolg: Daten übernehmen
@@ -1593,12 +1673,12 @@ function inRange(){
 }
 
 function updateCounts(){
-  if(state.track){ $("headline").textContent=TXT.tracking(state.track.label); return; }
-  if(!state.center){ $("headline").textContent=TXT.headline; return; }
+  if(state.track){ $("headline").textContent=TXT.tracking(state.track.label); renderList(); return; }
+  if(!state.center){ $("headline").textContent=TXT.headline; renderList(); return; }
   const n=inRange().length;
-  $("headline").textContent = state.query
-    ? TXT.hits(n)
-    : TXT.count(n);
+  const src=AS.source ? ` (${AS.source.label})` : "";
+  $("headline").textContent = (state.query ? TXT.hits(n) : TXT.count(n)) + src;
+  renderList();
 }
 
 /* ============ GPS ============ */
@@ -1616,7 +1696,7 @@ function startGps(){
          // Höhe nur übernehmen, wenn das Gerät sie halbwegs genau kennt; sonst Meereshöhe (siehe updateOverhead)
          const ga=p.coords.altitude, gacc=p.coords.altitudeAccuracy;
          if(typeof ga==="number" && typeof gacc==="number" && gacc<=50) state.gpsAlt=ga;
-         if(!state.track){
+         if(!state.track && !AS.source){
            // Sofort nur abrufen, wenn sich die (gerundete) Anfrage wirklich ändert; iOS meldet auch im Stand
            // etwa jede Sekunde eine neue Position, das hätte das Rate-Limit des Servers gesprengt
            const before=requestKey();
@@ -1990,7 +2070,7 @@ function stopTrack(){
   fetchGen++;
   state.track=null; state.notice=null;
   state.aircraft=[]; lastGoodTs=0; consecutiveFails=0;
-  state.center=state.gpsPos;
+  state.center=(AS.source && AS.source.center) || state.gpsPos;
   state.query=""; $("search").value="";
   $("trackBar").hidden=true;
   updateBgMap(true); updateCounts(); updateStatus(); requestDraw();
@@ -2014,6 +2094,98 @@ async function loadNames(){
   }catch(e){ NAMES.loaded=false; }
 }
 
+/* ============ Routen (für Liste und Detail-Sheet) ============ */
+// Je Callsign einmal abfragen und 10 Minuten behalten; Fehlschläge nach 2 Minuten erneut versuchen.
+// Die Position des Flugzeugs geht mit, damit der Server prüfen kann, ob die Route passt.
+const ROUTE_TTL_MS=10*60*1000, ROUTE_RETRY_MS=2*60*1000, ROUTE_PARALLEL=4;
+const routeCache=new Map();   // Callsign -> {j, at, p}; j: undefined = läuft, null = fehlgeschlagen
+let routeInflight=0;
+function routeParams(a){
+  if(a.lat==null || a.lon==null) return "";
+  let q=`&lat=${a.lat.toFixed(3)}&lon=${a.lon.toFixed(3)}`;
+  // Höhe, Kurs und Steigrate helfen dem Server, falsche Routen zu erkennen (z. B. Anflug auf EAP)
+  const alt=(typeof a.alt==="number") ? a.alt : (a.alt==="ground" ? 0 : null);
+  if(alt!=null) q+=`&alt=${Math.round(alt)}`;
+  if(typeof a.track==="number") q+=`&trk=${Math.round(a.track)}`;
+  if(typeof a.vRate==="number") q+=`&vr=${Math.round(a.vRate)}`;
+  return q;
+}
+function routeFresh(cs){
+  const e=routeCache.get(cs);
+  return !!e && Date.now()-e.at < (e.j===null ? ROUTE_RETRY_MS : ROUTE_TTL_MS);
+}
+function getRoute(a){
+  const cs=(a.flight||"").trim();
+  if(cs.length<2) return Promise.resolve(null);
+  if(routeFresh(cs)) return routeCache.get(cs).p;
+  routeInflight++;
+  const p=fetch(`${BASE}/route?callsign=${encodeURIComponent(cs)}${routeParams(a)}`,{cache:"no-store"})
+    .then(r=>r.ok ? r.json() : null).catch(()=>null)
+    .then(j=>{
+      routeInflight--;
+      const e=routeCache.get(cs); if(e && e.p===p){ e.j=j; e.at=Date.now(); }
+      return j;
+    });
+  routeCache.set(cs,{j:undefined, at:Date.now(), p});
+  if(routeCache.size>600){ const old=routeCache.keys().next().value; routeCache.delete(old); }
+  return p;
+}
+// Routen für die Liste nach und nach nachladen, höchstens 4 gleichzeitig
+function pumpRoutes(list){
+  for(const a of list){
+    if(routeInflight>=ROUTE_PARALLEL) break;
+    const cs=(a.flight||"").trim();
+    if(cs.length<3 || routeFresh(cs)) continue;
+    getRoute(a).then(()=>renderList());
+  }
+}
+
+/* ============ Flugzeugliste ============ */
+// Alle Flugzeuge im Umkreis, das nächste oben. Distanz wie im Detail-Sheet vom eigenen Standort.
+let listHtml="";
+function routeCell(a){
+  const e=routeCache.get((a.flight||"").trim());
+  const rt=e && e.j && e.j.route;
+  if(!rt || e.j.plausible===false) return "";   // unklare Routen nicht als Tatsache zeigen
+  const f=rt.orig?.iata||rt.orig?.icao||"", t=rt.dest?.iata||rt.dest?.icao||"";
+  return (f||t) ? `${esc(f||"?")}›${esc(t||"?")}` : "";
+}
+function renderList(){
+  const box=$("acList");
+  if(!state.center || !lastGoodTs){ box.hidden=true; listHtml=""; return; }
+  box.hidden=false;
+  const rp=refPos();
+  const rows=inRange().map(a=>({a, d: rp ? haversineNm(rp.lat,rp.lon,a.lat,a.lon) : null}))
+    .sort((x,y)=>(x.d??1e9)-(y.d??1e9));
+  pumpRoutes(rows.map(r=>r.a));
+  const selHex=(state.selected && $("sheet").classList.contains("open")) ? state.selected.hex : null;
+  const html=rows.map(({a,d})=>{
+    const cs=a.flight||a.hex||"";
+    const al=(a.flight && /^[A-Z]{3}\d/.test(a.flight)) ? (NAMES.airlines[a.flight.slice(0,3)]||"") : "";
+    const rt=routeCell(a);
+    return `<tr data-hex="${esc(a.hex)}" tabindex="0"${a.hex===selHex?' class="sel"':''}>`+
+      `<td class="cs">${esc(cs)}</td>`+
+      `<td${al?"":' class="dim"'}>${al?esc(al):"–"}</td>`+
+      `<td${rt?"":' class="dim"'}>${rt||"–"}</td>`+
+      `<td class="num">${esc(flText(a))||"–"}</td>`+
+      `<td class="num">${d==null?"–":fmtDec(d,1)}</td>`+
+      `<td class="num">${a.gs!=null?fmtInt(Math.round(a.gs)):"–"}</td></tr>`;
+  }).join("");
+  if(html!==listHtml){ $("acRows").innerHTML=html; listHtml=html; }
+  const empty=$("acEmpty");
+  empty.hidden=rows.length>0;
+  if(!rows.length) empty.textContent=state.query ? TXT.listMatchEmpty : TXT.listEmpty;
+  box.querySelector("table").hidden=!rows.length;
+}
+function openFromList(tr){
+  const a=tr && state.aircraft.find(x=>x.hex===tr.dataset.hex);
+  if(a) openSheet(a);
+}
+$("acRows").addEventListener("click", e=>openFromList(e.target.closest("tr")));
+$("acRows").addEventListener("keydown", e=>{
+  if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openFromList(e.target.closest("tr")); }
+});
+
 /* ============ Detail-Sheet ============ */
 let sheetDist=null, sheetBrg=null;
 
@@ -2030,24 +2202,15 @@ async function openSheet(a,dist,brg){
   $("sheet").classList.add("open");
   updateSatMap(a);
   renderSheet(a);
-  requestDraw();
+  requestDraw(); renderList();
   const cs=(a.flight||"").trim();
   if(cs){
-    try{
-      // Position des Flugzeugs mitschicken: der Server prüft, ob die Route dazu passt
-      let pos=(a.lat!=null&&a.lon!=null) ? `&lat=${a.lat.toFixed(3)}&lon=${a.lon.toFixed(3)}` : "";
-      // Höhe, Kurs und Steigrate helfen dem Server, falsche Routen zu erkennen (z. B. Anflug auf EAP)
-      if(pos){
-        const alt=(typeof a.alt==="number") ? a.alt : (a.alt==="ground" ? 0 : null);
-        if(alt!=null) pos+=`&alt=${Math.round(alt)}`;
-        if(typeof a.track==="number") pos+=`&trk=${Math.round(a.track)}`;
-        if(typeof a.vRate==="number") pos+=`&vr=${Math.round(a.vRate)}`;
-      }
-      const r=await fetch(`${BASE}/route?callsign=${encodeURIComponent(cs)}${pos}`,{cache:"no-store"});
-      const j=await r.json();
+    // Gemeinsamer Speicher mit der Liste: keine doppelte Abfrage für dasselbe Callsign
+    const j=await getRoute(a);
+    if(j){
       a._route=j;
       if(state.selected && state.selected.hex===a.hex){ state.selected._route=j; renderSheet(state.selected); }
-    }catch(e){}
+    }
   }
   if(a.reg){ loadPhoto(a); }
 }
@@ -2128,7 +2291,7 @@ function closeSheet(){
   state.selected=null;
   state.selectedApt=null;
   resetSatMap();
-  requestDraw();
+  requestDraw(); renderList();
 }
 
 /* ============ Flughafenwetter (METAR) ============ */
@@ -2294,7 +2457,7 @@ function drawAirports(c,R,toXY,font){
     const [x,y,dist]=toXY(st.lat,st.lon);
     if(dist>state.radius) continue;
     const sel=st.icao===state.selectedApt;
-    const col=(sel||st.d.alert) ? COL.sel : "rgba(129,147,171,.9)";
+    const col=(sel||st.d.alert) ? COL.sel : `rgba(${COL.dimRgb.join(",")},.9)`;
     ctx.strokeStyle=col; ctx.lineWidth=sel?2:1.4;
     ctx.beginPath(); ctx.arc(x,y,sel?5.5:4.5,0,Math.PI*2); ctx.stroke();
     if(st.d.hazard){                        // Gewitter/CB: zusätzlicher Punkt in der Mitte
@@ -2437,10 +2600,10 @@ canvas.addEventListener("click",ev=>{
 });
 
 /* ============ UI-Verdrahtung ============ */
-document.querySelectorAll(".seg button").forEach(b=>
+document.querySelectorAll("#rangeSeg button").forEach(b=>
   b.onclick=()=>{
     state.radius=+b.dataset.r; LS.set("radius",state.radius);
-    document.querySelectorAll(".seg button").forEach(x=>x.classList.toggle("active",x===b));
+    document.querySelectorAll("#rangeSeg button").forEach(x=>x.classList.toggle("active",x===b));
     updateCounts(); updateBgMap(); requestDraw(); fetchData(); maybeFetchMetar();
   });
 
@@ -2515,7 +2678,7 @@ function updateBgMap(force){
 applyBgMapVisibility();
 
 // Umkreis-Button initial markieren
-document.querySelectorAll(".seg button").forEach(b=>
+document.querySelectorAll("#rangeSeg button").forEach(b=>
   b.classList.toggle("active",+b.dataset.r===state.radius));
 
 
@@ -2544,9 +2707,11 @@ if('serviceWorker' in navigator){
 
 /* ============ Start ============ */
 window.addEventListener("resize",()=>{ sizeCanvas(); updateBgMap(true); requestDraw(); });
+readTheme();
 sizeCanvas();
 updateStatus();
 requestDraw();
+loadNames();                   // Airline-Namen für die Liste
 startGps();                    // GPS ist der einzige Modus
 setInterval(()=>{ fetchData(); updateStatus(); maybeFetchMetar(); }, 2000);  // Datenabruf, Statuszeile aktuell halten
 // Bewegung auf dem Radar: zweimal pro Sekunde neu zeichnen (hochgerechnete Positionen), nur bei sichtbarer Seite
@@ -2556,6 +2721,27 @@ setInterval(()=>{
   requestDraw();
 }, 500);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(requestDraw);
+
+/* ============ Owner-Anmeldung ============ */
+// adsb-radar.de/#owner fragt einmal nach dem Token, #logout entfernt ihn wieder.
+// Der Token bleibt nur in diesem Browser; ohne Token wird owner.js nie geladen.
+function ownerHash(){
+  if(location.hash==="#owner"){
+    const t=prompt("Owner-Token");
+    if(t && t.trim()) LS.set("ownerToken", t.trim());
+  } else if(location.hash==="#logout"){
+    try{ localStorage.removeItem("asl_ownerToken"); localStorage.removeItem("asl_ownerSource"); }catch(e){}
+  } else return;
+  history.replaceState(null, "", location.pathname+location.search);
+  location.reload();
+}
+window.addEventListener("hashchange", ownerHash);
+ownerHash();
+if(LS.get("ownerToken", null)){
+  const s=document.createElement("script");
+  s.src="owner.js";
+  document.body.appendChild(s);
+}
 </script>
 </body>
 </html>
