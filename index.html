@@ -2745,18 +2745,37 @@ if(document.fonts && document.fonts.ready) document.fonts.ready.then(requestDraw
 /* ============ Owner-Anmeldung ============ */
 // adsb-radar.de/#owner fragt einmal nach dem Token, #logout entfernt ihn wieder.
 // Der Token bleibt nur in diesem Browser; ohne Token wird owner.js nie geladen.
+function ownerLogin(){
+  const t=prompt("Owner-Token");
+  if(t && t.trim()){ LS.set("ownerToken", t.trim()); return true; }
+  return false;
+}
+function ownerLogout(){
+  try{ localStorage.removeItem("asl_ownerToken"); localStorage.removeItem("asl_ownerSource"); }catch(e){}
+}
 function ownerHash(){
-  if(location.hash==="#owner"){
-    const t=prompt("Owner-Token");
-    if(t && t.trim()) LS.set("ownerToken", t.trim());
-  } else if(location.hash==="#logout"){
-    try{ localStorage.removeItem("asl_ownerToken"); localStorage.removeItem("asl_ownerSource"); }catch(e){}
-  } else return;
+  if(location.hash==="#owner") ownerLogin();
+  else if(location.hash==="#logout") ownerLogout();
+  else return;
   history.replaceState(null, "", location.pathname+location.search);
   location.reload();
 }
 window.addEventListener("hashchange", ownerHash);
 ownerHash();
+// Versteckter Einstieg für die installierte App (ohne Adresszeile): fünfmal schnell auf die Uhrzeit tippen.
+// Angemeldet fragt derselbe Weg, ob abgemeldet werden soll.
+let clockTaps=[];
+$("clock").addEventListener("click", ()=>{
+  const now=Date.now();
+  clockTaps=clockTaps.filter(t=>now-t<2500); clockTaps.push(now);
+  if(clockTaps.length<5) return;
+  clockTaps=[];
+  if(LS.get("ownerToken", null)){
+    if(!confirm("Owner-Bereich auf diesem Gerät abmelden?")) return;
+    ownerLogout();
+  } else if(!ownerLogin()) return;
+  location.reload();
+});
 if(LS.get("ownerToken", null)){
   const s=document.createElement("script");
   s.src="owner.js";
