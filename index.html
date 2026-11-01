@@ -702,7 +702,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     --txt-dim:#8193AB;
     --target:#E8EEF5;    /* Ziele */
     --sel:#D9A441;       /* einzige Signalfarbe: Auswahl, Warnungen */
+    --fav:#D9A441;       /* Favoriten und Alarmring (nur Owner) */
     --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --font-data:var(--font); /* Schrift für Radar und Liste */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   /* Das Dokument selbst scrollt nicht. iOS lässt in der installierten Web-App das Dokument
@@ -724,6 +726,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
   h1{font-weight:600;font-size:20px;line-height:1.25;margin:0;color:var(--txt)}
   .clock{flex:none;color:var(--txt-dim);font-size:15px}
   .clock.warn{color:var(--sel)}
+  .owner-badge{flex:none;align-self:center;font-size:13px;color:var(--fav);border:1px solid var(--fav);
+    border-radius:3px;padding:0 6px;margin-left:auto;line-height:20px}
+  .owner-badge[hidden]{display:none}
   .status{color:var(--txt-dim);font-size:15px;margin:2px 0 4px}
   .status[hidden]{display:none}
   .status.warn{color:var(--sel)}
@@ -764,7 +769,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   /* Flugzeugliste */
   .aclist{margin:14px 0 0}
   .aclist[hidden]{display:none}
-  .aclist table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:15px}
+  .aclist table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:15px;font-family:var(--font-data)}
   .aclist th{color:var(--txt-dim);font-weight:400;font-size:13px;text-align:left;
     padding:0 3px 6px;border-bottom:1px solid var(--line)}
   .aclist td{padding:9px 3px;border-bottom:1px solid var(--line);
@@ -776,6 +781,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .aclist tbody tr:hover td{background:var(--surface)}
   .aclist tbody tr:focus-visible{outline:2px solid var(--sel);outline-offset:-2px}
   .aclist tr.sel td{color:var(--sel)}
+  .aclist td.fav{color:var(--fav)}
+  .aclist tr.mark td:first-child{box-shadow:inset 3px 0 0 var(--fav)}
   .aclist .c-cs{width:21%} .aclist .c-al{width:22%} .aclist .c-rt{width:22%}
   .aclist .c-fl{width:13%} .aclist .c-nm{width:11%} .aclist .c-kt{width:11%}
   .aclist .empty{margin:10px 0 0;color:var(--txt-dim)}
@@ -886,6 +893,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="page" id="page"><div class="inner">
   <div class="topline">
     <h1 id="headline">Flugzeuge im Umkreis</h1>
+    <span class="owner-badge" id="ownerBadge" hidden>Owner</span>
     <span class="clock" id="clock" title="Stand der Daten" aria-label="Stand der Daten"></span>
   </div>
   <p class="status" id="status" aria-live="polite">Warte auf Standort …</p>
@@ -1115,14 +1123,14 @@ const TXT = {
 
 const COL = {           // Canvas-Farben (entsprechen den CSS-Tokens)
   bg:"#0F1B2D", line:"#2A3D57", dim:"#8193AB", txt:"#D3DCE8", target:[232,238,245], sel:"#D9A441",
-  dimRgb:[129,147,171]
+  dimRgb:[129,147,171], fav:"#D9A441"
 };
 // Liest die Farben aus den CSS-Variablen; so folgt das Radar jeder Darstellung, die dort umgeschaltet wird.
 function hexRgb(h){ const m=/^#([0-9a-f]{6})$/i.exec(String(h).trim()); if(!m) return null;
   const n=parseInt(m[1],16); return [n>>16&255, n>>8&255, n&255]; }
 function readTheme(){
   const cs=getComputedStyle(document.documentElement), v=k=>cs.getPropertyValue(k).trim();
-  for(const [k,var_] of [["bg","--bg"],["line","--line"],["dim","--txt-dim"],["txt","--txt"],["sel","--sel"]]){
+  for(const [k,var_] of [["bg","--bg"],["line","--line"],["dim","--txt-dim"],["txt","--txt"],["sel","--sel"],["fav","--fav"]]){
     if(hexRgb(v(var_))) COL[k]=v(var_);
   }
   COL.target=hexRgb(v("--target"))||COL.target;
@@ -1173,11 +1181,15 @@ const fmtDec = (n,dig) => Number(n).toLocaleString(LOCALE,{minimumFractionDigits
 // source: {id, label, center:{lat,lon}, url:()=>string, headers:()=>object}
 const AS = {
   source: null,
+  isFav: ()=>false,             // Owner: Favorit? (Farbe in Radar und Liste)
+  rowMark: ()=>false,           // Owner: Zeile markieren (z. B. im Alarmradius)
+  rings: [],                    // Owner: Zusatzringe [{nm, color:()=>Farbe}]
   get state(){ return state; },
+  haversineNm, renderList, closeSheet,
   BASE, LS, TXT, LANG, $, esc,
   requestDraw, fetchData, updateStatus, updateCounts, updateBgMap, setNotice,
   fetchRadius(){ return Math.max(state.radius, OV_FETCH_NM)+1; },
-  refreshTheme(){ readTheme(); requestDraw(); },
+  refreshTheme(){ readTheme(); listHtml=""; renderList(); requestDraw(); },
   setSource(src){
     if($("sheet").classList.contains("open")) closeSheet();
     fetchGen++;
@@ -1320,11 +1332,17 @@ function drawRadar(){
   const S=cssSize, c=S/2, R=S*0.45;
   ctx.clearRect(0,0,S,S);
   dotHits=[]; aptHits=[];
-  const font=getComputedStyle(document.body).fontFamily;
+  const font=getComputedStyle(document.documentElement).getPropertyValue("--font-data").trim()
+    || getComputedStyle(document.body).fontFamily;
 
   // Entfernungsringe
   ctx.strokeStyle=COL.line; ctx.lineWidth=1;
   for(let i=1;i<=5;i++){ ctx.beginPath(); ctx.arc(c,c,R*i/5,0,Math.PI*2); ctx.stroke(); }
+  for(const ring of AS.rings){
+    if(ring.nm>state.radius) continue;
+    ctx.save(); ctx.strokeStyle=ring.color(); ctx.globalAlpha=.7; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.arc(c,c,R*ring.nm/state.radius,0,Math.PI*2); ctx.stroke(); ctx.restore();
+  }
 
   // Ringbeschriftung (nur jeder zweite Ring + Außenring, damit es ruhig bleibt)
   ctx.fillStyle=COL.dim; ctx.font=`12px ${font}`; ctx.textAlign="left"; ctx.textBaseline="middle";
@@ -1376,6 +1394,7 @@ function drawRadar(){
     if(dist>state.radius) continue;
     const brg=bearingDeg(state.center.lat,state.center.lon,a.lat,a.lon);
     const isSel=!!(state.selected && a.hex===state.selected.hex);
+    const isFav=AS.isFav(a);
     const match=matchesQuery(a);
 
     // Helligkeit kodiert die Höhe in drei klar getrennten Stufen:
@@ -1384,7 +1403,7 @@ function drawRadar(){
     let alpha=f==null ? .6 : (f<10000 ? .42 : f<25000 ? .7 : 1);
     if(!match) alpha=.18;
     const tcol=`rgba(${COL.target.join(",")},${alpha})`;
-    const col=isSel ? COL.sel : tcol;
+    const col=isSel ? COL.sel : (isFav ? COL.fav : tcol);
 
     // Historie: letzte Positionen, nach hinten verblassend
     const hist=posMemo.get(a.hex)?.hist||[];
@@ -1420,7 +1439,7 @@ function drawRadar(){
     ctx.fillStyle=col; ctx.fillRect(x-h,y-h,h*2,h*2);
 
     // Datenblock mit Führungslinie
-    if(match && (state.labels || isSel || state.track)){
+    if(match && (state.labels || isSel || isFav || state.track)){
       const l1=a.flight||(a.hex||"").toUpperCase();
       const l2=[flText(a), a.gs!=null?Math.round(a.gs):""].filter(Boolean).join("  ");
       ctx.font=`600 12px ${font}`; const w1=ctx.measureText(l1).width;
@@ -1432,15 +1451,15 @@ function drawRadar(){
       if(!left && x+12+bw>S-2) left=true;
       if(left && x-12-bw<2) left=false;
       const dx=left?-1:1, lx=left?x-12-bw:x+12, ly=Math.max(16,y-12);
-      ctx.strokeStyle=isSel?COL.sel:`rgba(${COL.target.join(",")},${alpha*.7})`; ctx.lineWidth=1;
+      ctx.strokeStyle=isSel?COL.sel:isFav?COL.fav:`rgba(${COL.target.join(",")},${alpha*.7})`; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x+dx*(h+1),y-h-1); ctx.lineTo(x+dx*10,ly+2); ctx.stroke();
       ctx.textAlign="left"; ctx.textBaseline="alphabetic";
       // Hintergrund-Kontur, damit Ringe und Vektoren den Text nicht durchkreuzen
       ctx.lineJoin="round"; ctx.lineWidth=4; ctx.strokeStyle=COL.bg;
       ctx.font=`600 12px ${font}`; ctx.strokeText(l1, lx, ly-2);
-      ctx.fillStyle=isSel?COL.sel:COL.txt; ctx.fillText(l1, lx, ly-2);
+      ctx.fillStyle=isSel?COL.sel:isFav?COL.fav:COL.txt; ctx.fillText(l1, lx, ly-2);
       ctx.font=`12px ${font}`; ctx.strokeText(l2, lx, ly+12);
-      ctx.fillStyle=isSel?COL.sel:COL.dim; ctx.fillText(l2, lx, ly+12);
+      ctx.fillStyle=isSel?COL.sel:isFav?COL.fav:COL.dim; ctx.fillText(l2, lx, ly+12);
     }
     dotHits.push({x,y,a,dist,brg});
   }
@@ -2163,8 +2182,9 @@ function renderList(){
     const cs=a.flight||a.hex||"";
     const al=(a.flight && /^[A-Z]{3}\d/.test(a.flight)) ? (NAMES.airlines[a.flight.slice(0,3)]||"") : "";
     const rt=routeCell(a);
-    return `<tr data-hex="${esc(a.hex)}" tabindex="0"${a.hex===selHex?' class="sel"':''}>`+
-      `<td class="cs">${esc(cs)}</td>`+
+    const cls=[a.hex===selHex?"sel":"", AS.rowMark(a)?"mark":""].filter(Boolean).join(" ");
+    return `<tr data-hex="${esc(a.hex)}" tabindex="0"${cls?` class="${cls}"`:""}>`+
+      `<td class="cs${AS.isFav(a)?" fav":""}">${esc(cs)}</td>`+
       `<td${al?"":' class="dim"'}>${al?esc(al):"–"}</td>`+
       `<td${rt?"":' class="dim"'}>${rt||"–"}</td>`+
       `<td class="num">${esc(flText(a))||"–"}</td>`+
