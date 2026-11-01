@@ -1189,7 +1189,7 @@ const AS = {
   rowMark: ()=>false,           // Owner: Zeile markieren (z. B. im Alarmradius)
   rings: [],                    // Owner: Zusatzringe [{nm, color:()=>Farbe}]
   get state(){ return state; },
-  haversineNm, renderList, closeSheet,
+  haversineNm, bearingDeg, altFt, flText, renderList, closeSheet,
   BASE, LS, TXT, LANG, $, esc,
   requestDraw, fetchData, updateStatus, updateCounts, updateBgMap, setNotice,
   fetchRadius(){ return Math.max(state.radius, OV_FETCH_NM)+1; },
