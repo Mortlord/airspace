@@ -760,6 +760,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .data-credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
   /* Suche */
+  .range-lbl{margin-top:14px}
+  #rangeSeg{margin-bottom:14px}
   .search{display:block;width:100%;background:var(--surface);border:1px solid var(--line);
     border-radius:4px;color:var(--txt);font-family:inherit;font-size:17px;
     padding:13px 14px;outline:none;-webkit-appearance:none;appearance:none}
@@ -911,6 +913,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <p class="data-credit" id="dataCredit"><span id="dataCreditLbl">Flugdaten:</span> <a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> · <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a> (<a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL</a>)</p>
   <p class="map-credit" id="mapCredit">Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames</p>
 
+  <span class="field-lbl range-lbl" id="rangeLbl">Umkreis in NM</span>
+  <div class="seg" id="rangeSeg" role="group" aria-labelledby="rangeLbl">
+    <button data-r="5">5</button>
+    <button data-r="10">10</button>
+    <button data-r="25">25</button>
+    <button data-r="50">50</button>
+    <button data-r="100">100</button>
+  </div>
+
   <input class="search" id="search" type="search" placeholder="Callsign oder Hex suchen"
          autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"
          aria-label="Callsign oder Hex suchen">
@@ -925,14 +936,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <p class="empty" id="acEmpty" hidden></p>
   </div>
 
-  <span class="field-lbl" id="rangeLbl">Umkreis in NM</span>
-  <div class="seg" id="rangeSeg" role="group" aria-labelledby="rangeLbl">
-    <button data-r="5">5</button>
-    <button data-r="10">10</button>
-    <button data-r="25">25</button>
-    <button data-r="50">50</button>
-    <button data-r="100">100</button>
-  </div>
 
   <div class="toggle" id="toggleLabels">
     <span>Beschriftung für alle Flugzeuge</span>
@@ -1182,6 +1185,7 @@ const fmtDec = (n,dig) => Number(n).toLocaleString(LOCALE,{minimumFractionDigits
 const AS = {
   source: null,
   isFav: ()=>false,             // Owner: Favorit? (Farbe in Radar und Liste)
+  radarStyle: "airspace",       // Owner: "classic" zeichnet das Radar wie die frühere private App
   rowMark: ()=>false,           // Owner: Zeile markieren (z. B. im Alarmradius)
   rings: [],                    // Owner: Zusatzringe [{nm, color:()=>Farbe}]
   get state(){ return state; },
@@ -1335,30 +1339,36 @@ function drawRadar(){
   const font=getComputedStyle(document.documentElement).getPropertyValue("--font-data").trim()
     || getComputedStyle(document.body).fontFamily;
 
+  const classic=AS.radarStyle==="classic";
+  if(classic) drawClassicFrame(c,R,font,state.bgmap);
+
   // Entfernungsringe
   ctx.strokeStyle=COL.line; ctx.lineWidth=1;
-  for(let i=1;i<=5;i++){ ctx.beginPath(); ctx.arc(c,c,R*i/5,0,Math.PI*2); ctx.stroke(); }
+  if(!classic) for(let i=1;i<=5;i++){ ctx.beginPath(); ctx.arc(c,c,R*i/5,0,Math.PI*2); ctx.stroke(); }
   for(const ring of AS.rings){
     if(ring.nm>state.radius) continue;
-    ctx.save(); ctx.strokeStyle=ring.color(); ctx.globalAlpha=.7; ctx.lineWidth=1.2;
+    ctx.save(); ctx.strokeStyle=ring.color(); ctx.globalAlpha=classic?.5:.7; ctx.lineWidth=classic?1:1.2;
+    if(classic) ctx.setLineDash([3,5]);
     ctx.beginPath(); ctx.arc(c,c,R*ring.nm/state.radius,0,Math.PI*2); ctx.stroke(); ctx.restore();
   }
 
   // Ringbeschriftung (nur jeder zweite Ring + Außenring, damit es ruhig bleibt)
   ctx.fillStyle=COL.dim; ctx.font=`12px ${font}`; ctx.textAlign="left"; ctx.textBaseline="middle";
-  for(const i of [1,3,5]){
+  if(!classic) for(const i of [1,3,5]){
     const nm=+(state.radius*i/5).toFixed(1);
     const ang=toRad(-45);
     ctx.fillText(LANG==="de" ? String(nm).replace(".",",") : String(nm), c+Math.cos(ang)*R*i/5+4, c+Math.sin(ang)*R*i/5-6);
   }
 
   // Nordmarke
-  ctx.strokeStyle=COL.dim; ctx.beginPath(); ctx.moveTo(c,c-R); ctx.lineTo(c,c-R+8); ctx.stroke();
-  ctx.fillStyle=COL.txt; ctx.font=`600 13px ${font}`; ctx.textAlign="center"; ctx.textBaseline="bottom";
-  ctx.fillText("N",c,c-R-3);
+  if(!classic){
+    ctx.strokeStyle=COL.dim; ctx.beginPath(); ctx.moveTo(c,c-R); ctx.lineTo(c,c-R+8); ctx.stroke();
+    ctx.fillStyle=COL.txt; ctx.font=`600 13px ${font}`; ctx.textAlign="center"; ctx.textBaseline="bottom";
+    ctx.fillText("N",c,c-R-3);
+  }
 
   // eigene Position: kleines Kreuz
-  const drawCross=(x,y)=>{
+  const drawCross=classic ? drawClassicMe : (x,y)=>{
     ctx.strokeStyle=COL.dim; ctx.lineWidth=1.2; ctx.beginPath();
     ctx.moveTo(x-5,y); ctx.lineTo(x+5,y); ctx.moveTo(x,y-5); ctx.lineTo(x,y+5); ctx.stroke();
   };
@@ -1386,6 +1396,7 @@ function drawRadar(){
   list.sort((p,q)=>(state.selected&&p.hex===state.selected.hex)-(state.selected&&q.hex===state.selected.hex));
 
   const now=performance.now();
+  const labelJobs=[];
   for(const a of list){
     if(a.lat==null||a.lon==null) continue;
     // Anzeigeposition zwischen den Meldungen aus Kurs und Geschwindigkeit hochrechnen
@@ -1396,6 +1407,13 @@ function drawRadar(){
     const isSel=!!(state.selected && a.hex===state.selected.hex);
     const isFav=AS.isFav(a);
     const match=matchesQuery(a);
+    if(classic){
+      const {sz,col:cc}=drawClassicTarget(x,y,a,isSel,match);
+      const label=(a.flight||a.hex||"").trim();
+      if(label && match) labelJobs.push({label,x,y,sz,isSel,col:cc,dist});
+      dotHits.push({x,y,a,dist,brg});
+      continue;
+    }
 
     // Helligkeit kodiert die Höhe in drei klar getrennten Stufen:
     // unter FL100 gedämpft, FL100 bis FL250 mittel, darüber voll hell
@@ -1463,6 +1481,79 @@ function drawRadar(){
     }
     dotHits.push({x,y,a,dist,brg});
   }
+  if(classic) drawClassicLabels(labelJobs,R,c,font);
+}
+
+/* ============ Klassische Radardarstellung (Owner, wie die frühere private App) ============ */
+// Pfeile in Kursrichtung, Farbe nach Höhe, nur das Callsign als Beschriftung,
+// keine Historienpunkte, keine Vektoren. Beschriftungen weichen einander aus.
+const CLASSIC_ALT=["#6f7d8c","#8a97a5","#a9b4c0","#cdd6e0"], CLASSIC_GND="#d98a3d";
+function classicAltColor(a){
+  if(a.alt==="ground" || altFt(a)==null) return CLASSIC_GND;
+  const f=altFt(a);
+  return f<5000 ? CLASSIC_ALT[0] : f<15000 ? CLASSIC_ALT[1] : f<30000 ? CLASSIC_ALT[2] : CLASSIC_ALT[3];
+}
+function drawClassicFrame(c,R,font,onMap){
+  [.25,.5,.75,1].forEach((f,i)=>{
+    ctx.beginPath(); ctx.arc(c,c,R*f,0,Math.PI*2);
+    ctx.strokeStyle=onMap ? (i===3?"rgba(120,160,220,.75)":"rgba(120,160,220,.30)") : (i===3?COL.line:"#1a1f27");
+    ctx.lineWidth=i===3?1.5:.7; ctx.stroke();
+    if(f<1){
+      // Entfernung auf der Südost-Diagonale, damit sie nicht mit den Himmelsrichtungen kollidiert
+      const lx=c+R*f*Math.SQRT1_2, ly=c+R*f*Math.SQRT1_2, t=String(Math.round(state.radius*f));
+      ctx.font=`10px ${font}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.shadowColor="rgba(8,11,16,.95)"; ctx.shadowBlur=4;
+      ctx.fillStyle=onMap ? "rgba(180,205,235,.95)" : "#7c8794";
+      ctx.fillText(t,lx,ly+1); ctx.fillText(t,lx,ly+1);
+      ctx.shadowBlur=0; ctx.shadowColor="transparent";
+    }
+  });
+  ctx.strokeStyle=onMap ? "rgba(120,160,220,.25)" : "#1a1f27"; ctx.lineWidth=.6; ctx.setLineDash([3,6]);
+  ctx.beginPath(); ctx.moveTo(c,c-R); ctx.lineTo(c,c+R); ctx.moveTo(c-R,c); ctx.lineTo(c+R,c); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=onMap ? "#9cc0ee" : "#6b7682"; ctx.font=`600 12px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+  for(const [ch,dx,dy] of [["N",0,-R+13],["S",0,R-3],["E",R-13,4],["W",-R+8,4]]) ctx.fillText(ch,c+dx,c+dy);
+}
+function drawClassicMe(x,y){
+  ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fillStyle=COL.sel; ctx.fill();
+  ctx.beginPath(); ctx.arc(x,y,9,0,Math.PI*2); ctx.strokeStyle=COL.sel; ctx.globalAlpha=.35; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.globalAlpha=1;
+}
+function drawClassicTarget(x,y,a,isSel,match){
+  const sz=isSel?9:5.5, col=classicAltColor(a);
+  ctx.save(); ctx.translate(x,y); ctx.rotate(((a.track??0)-90)*Math.PI/180);
+  ctx.beginPath(); ctx.moveTo(sz,0); ctx.lineTo(-sz*.6,-sz*.5); ctx.lineTo(-sz*.3,0); ctx.lineTo(-sz*.6,sz*.5); ctx.closePath();
+  ctx.fillStyle=col; ctx.globalAlpha=!match ? .25 : (isSel ? 1 : .8); ctx.fill();
+  if(isSel){ ctx.globalAlpha=1; ctx.strokeStyle=COL.sel; ctx.lineWidth=1.5; ctx.stroke(); }
+  ctx.restore();
+  return {sz, col};
+}
+function drawClassicLabels(jobs,R,c,font){
+  // Ausgewähltes zuerst, dann nach Entfernung; bei Gedränge wird ein Label weggelassen statt zu überlappen
+  jobs.sort((p,q)=>(q.isSel-p.isSel) || (p.dist-q.dist));
+  const placed=[], pad=2, lineH=12;
+  const overlaps=r=>placed.some(o=>r.x<o.x+o.w+pad && r.x+r.w+pad>o.x && r.y<o.y+o.h+pad && r.y+r.h+pad>o.y);
+  ctx.textBaseline="middle"; ctx.textAlign="left";
+  for(const j of jobs){
+    ctx.font=j.isSel ? `600 11px ${font}` : `10px ${font}`;
+    const w=ctx.measureText(j.label).width, off=j.sz+3;
+    const cands=[[j.x+off,j.y],[j.x-off-w,j.y],[j.x-w/2,j.y-off-8],[j.x-w/2,j.y+off+8],
+                 [j.x+off,j.y-off-4],[j.x-off-w,j.y+off+4],[j.x+off,j.y+off+4],[j.x-off-w,j.y-off-4]];
+    let pick=null;
+    for(const [lx,ly] of cands){
+      const r={x:lx,y:ly-lineH/2,w,h:lineH};
+      if(Math.hypot(lx+w/2-c, ly-c)>R+14) continue;
+      if(!overlaps(r)){ pick=[lx,ly,r]; break; }
+    }
+    if(!pick){ if(!j.isSel) continue; pick=[cands[0][0],cands[0][1],{x:cands[0][0],y:cands[0][1]-lineH/2,w,h:lineH}]; }
+    placed.push(pick[2]);
+    ctx.globalAlpha=j.isSel ? 1 : .82;
+    ctx.fillStyle=j.isSel ? "#e6ecf2" : j.col;
+    ctx.fillText(j.label, pick[0], pick[1]);
+    ctx.globalAlpha=1;
+  }
+  ctx.textBaseline="alphabetic";
 }
 
 /* ============ Datenabruf ============ */

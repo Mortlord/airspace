@@ -31,7 +31,10 @@
       --sel:#4a9fd4; --fav:#d98a3d;
       --font-data:'IBM Plex Mono','Courier New',monospace;
     }
-    :root[data-theme="classic"] .aclist table{font-size:13px}
+    :root[data-theme="classic"] .aclist table{font-size:12px}
+    :root[data-theme="classic"] .aclist .c-cs{width:22%} :root[data-theme="classic"] .aclist .c-al{width:19%}
+    :root[data-theme="classic"] .aclist .c-rt{width:20%} :root[data-theme="classic"] .aclist .c-fl{width:15%}
+    :root[data-theme="classic"] .aclist .c-nm{width:12%} :root[data-theme="classic"] .aclist .c-kt{width:12%}
     #ownerSlot .seg button:disabled{color:var(--txt-dim);opacity:.45;cursor:default}
     .favadd{display:flex;gap:8px}
     .favadd .search{flex:1;min-width:0}
@@ -50,6 +53,7 @@
   function setTheme(t){
     if(t === "classic") document.documentElement.dataset.theme = "classic";
     else delete document.documentElement.dataset.theme;
+    AS.radarStyle = t === "classic" ? "classic" : "airspace";
     AS.LS.set("ownerTheme", t);
     AS.refreshTheme();
     markSeg("ownerThemeSeg", "theme", t);
