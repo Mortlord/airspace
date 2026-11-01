@@ -5,6 +5,7 @@
    Stufe 1: Owner-Kennzeichen, Abmelden, Umschalter zwischen AirSpace-Darstellung und klassischer Darstellung
    Stufe 2: Datenquelle Live (GPS), Feeder (Heim-Pi) oder Fixpunkt
    Stufe 3: Favoriten mit Telegram-Alarm, Markierung in Radar und Liste, Alarmring
+   Stufe 4: Link zur 3D-Empfangsreichweite (coverage.html)
    Stufe 5: 3D-Ansicht (three.js aus three.min.js im eigenen Repo) */
 (function(){
   "use strict";
@@ -71,6 +72,7 @@
       <button data-src="fixpoint" disabled>Fixpunkt</button>
     </div>
     <p class="owner-note" id="ownerSrcNote"></p>
+    <p class="owner-note" id="covLink" hidden><a href="coverage.html">Empfangsreichweite des Heim-Pi in 3D</a></p>
 
     <span class="field-lbl" id="favLbl">Favoriten</span>
     <div class="favadd">
@@ -133,6 +135,7 @@
   async function initSources(){
     const [f, x] = await Promise.all([check("feeder"), check("fixpoint")]);
     SOURCES.feeder.center = f; SOURCES.fixpoint.center = x;
+    $("covLink").hidden = !f;          // Stufe 4: Reichweite gibt es nur mit erreichbarem Feeder
     $("ownerSrcSeg").querySelector('[data-src="feeder"]').disabled = !f;
     $("ownerSrcSeg").querySelector('[data-src="fixpoint"]').disabled = !x;
     const note = [];
