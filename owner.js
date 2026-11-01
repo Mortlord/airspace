@@ -6,7 +6,10 @@
    Stufe 2: Datenquelle Live (GPS), Feeder (Heim-Pi) oder Fixpunkt
    Stufe 3: Favoriten mit Telegram-Alarm, Markierung in Radar und Liste, Alarmring
    Stufe 4: Link zur 3D-Empfangsreichweite (coverage.html)
-   Stufe 5: 3D-Ansicht (three.js aus three.min.js im eigenen Repo) */
+   Stufe 5: 3D-Ansicht (three.js aus three.min.js im eigenen Repo)
+   Stufe 6: Regenradar des DWD im Feeder-Modus
+   Stufe 7: Kompass (iOS, Live-Modus)
+   Stufe 8: Flughafenansicht Basel-Mulhouse (airport-lfsb.json im eigenen Repo) */
 (function(){
   "use strict";
   const AS = window.AS;
@@ -265,10 +268,14 @@
     .radar-wrap.is3d .v3-canvas,.radar-wrap.is3d .v3-labels{display:block}
     .radar-wrap.is3d #radar{visibility:hidden}
     .radar-wrap.is3d .bgmap{display:none}
-    .v3-btn{position:absolute;top:0;right:0;z-index:4;min-width:40px;height:32px;padding:0 8px;
+    .ob-col{position:absolute;top:0;right:0;z-index:4;display:flex;flex-direction:column;gap:6px}
+    .ob-btn{width:40px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;
       background:var(--surface);border:1px solid var(--line);border-radius:4px;color:var(--txt-dim);
       font:600 14px var(--font);cursor:pointer}
-    .v3-btn.active{color:var(--sel);border-color:var(--sel)}
+    .ob-btn[hidden]{display:none}
+    .ob-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+    .ob-btn.active{color:var(--sel);border-color:var(--sel)}
+    .radar-wrap.is3d .ob-btn.no3d{display:none}
     .v3-lbl{position:absolute;white-space:nowrap;font:10px var(--font-data);color:var(--txt-dim);
       text-shadow:0 0 3px var(--bg),0 0 3px var(--bg);transform:translate(-50%,-50%)}
     .v3-dir{font:600 12px var(--font);color:var(--txt)}
@@ -279,9 +286,14 @@
   document.head.appendChild(v3css);
   const v3cv = document.createElement("canvas"); v3cv.className = "v3-canvas";
   const v3lb = document.createElement("div");    v3lb.className = "v3-labels";
-  const v3bt = document.createElement("button"); v3bt.className = "v3-btn"; v3bt.textContent = "3D";
-  v3bt.setAttribute("aria-label", "3D-Ansicht ein- oder ausschalten");
-  wrap.append(v3cv, v3lb, v3bt);
+  // Knopfspalte oben rechts am Radar: 3D, Kompass, Regenradar, Flughafen
+  const obCol = document.createElement("div"); obCol.className = "ob-col";
+  function obButton(label, html, extra){
+    const b = document.createElement("button"); b.className = "ob-btn" + (extra ? " " + extra : "");
+    b.innerHTML = html; b.setAttribute("aria-label", label); b.title = label; obCol.appendChild(b); return b;
+  }
+  const v3bt = obButton("3D-Ansicht ein- oder ausschalten", "3D");
+  wrap.append(v3cv, v3lb, obCol);
 
   const V3_FT_KM = 0.0003048, V3_NM_KM = 1.852;
   const v3 = { on:false, loading:null, ready:false, renderer:null, scene:null, camera:null, ground:null, planes:null,
@@ -519,6 +531,344 @@
   setInterval(() => { if(v3.on && !document.hidden) draw3d(false); }, 1000);
   window.addEventListener("resize", () => { if(v3.on) draw3d(true); });
 
+  /* ============ Stufe 7: Kompass (nur iOS, nur Live-Modus) ============ */
+  // Startet immer mit Norden oben und wird nicht gespeichert. Leichte Glättung, neu ausgerichtet erst ab 5°.
+  const cmp = { on:false, smooth:null, applied:0 };
+  const CMP_THRESHOLD = 5, CMP_ALPHA = 0.15;
+  const angleDelta = (a, b) => (b - a + 540) % 360 - 180;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const cmpBt = obButton("Radar nach Blickrichtung drehen",
+    `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>`, "no3d");
+  cmpBt.hidden = true;
+  AS.heading = () => (cmp.on && !AS.source) ? cmp.applied : 0;
+  function onOrientation(e){
+    if(typeof e.webkitCompassHeading !== "number" || isNaN(e.webkitCompassHeading)) return;
+    if(typeof e.webkitCompassAccuracy === "number" && e.webkitCompassAccuracy < 0) return;   // unkalibriert
+    const h = e.webkitCompassHeading;
+    cmp.smooth = cmp.smooth == null ? h : (cmp.smooth + CMP_ALPHA * angleDelta(cmp.smooth, h) + 360) % 360;
+    if(Math.abs(angleDelta(cmp.applied, cmp.smooth)) >= CMP_THRESHOLD){ cmp.applied = cmp.smooth; AS.requestDraw(); }
+  }
+  async function toggleCompass(){
+    if(cmp.on){
+      cmp.on = false; cmp.smooth = null; cmp.applied = 0;
+      window.removeEventListener("deviceorientation", onOrientation);
+      cmpBt.classList.remove("active"); AS.setNotice("Ausrichtung: Norden oben", 2500); AS.requestDraw(); return;
+    }
+    try{
+      if(typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function"){
+        if(await DeviceOrientationEvent.requestPermission() !== "granted"){ AS.setNotice("Kompass-Zugriff abgelehnt"); return; }
+      }
+    }catch(e){ AS.setNotice("Kompass nicht verfügbar"); return; }
+    cmp.on = true; cmp.smooth = null; cmp.applied = 0;
+    window.addEventListener("deviceorientation", onOrientation);
+    cmpBt.classList.add("active"); AS.setNotice("Radar folgt der Blickrichtung", 2500); AS.requestDraw();
+  }
+  cmpBt.addEventListener("click", toggleCompass);
+
+  /* ============ Stufe 6: Regenradar (DWD, nur im Feeder-Modus) ============ */
+  // Niederschlagsradar des Deutschen Wetterdienstes als Ebene über der Hintergrundkarte.
+  // Das neueste Messbild liegt etwa 5 bis 10 Minuten zurück: jetzt minus 8 Minuten, auf 5 Minuten abgerundet.
+  const wx = { on: AS.LS.get("ownerWx", false), layer:null };
+  const WX_STEP = 5 * 60000;
+  const wxTimeMs = () => Math.floor((Date.now() - 8 * 60000) / WX_STEP) * WX_STEP;
+  const wxTime = () => new Date(wxTimeMs()).toISOString().replace(/\.\d+Z$/, ".000Z");
+  const wxBt = obButton("Regenradar ein- oder ausschalten",
+    `<svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1 .5-8A5 5 0 0 1 17 8a3.5 3.5 0 0 1 0 7z"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2"/></svg>`, "no3d");
+  const wxCredit = document.createElement("p"); wxCredit.className = "map-credit"; wxCredit.hidden = true;
+  $("mapCredit").after(wxCredit);
+  const wxActive = () => wx.on && !!AS.source && AS.source.id === "feeder";
+  AS.mapForced = () => wxActive();
+  function applyWx(){
+    wxBt.hidden = !(AS.source && AS.source.id === "feeder");
+    wxBt.classList.toggle("active", wx.on);
+    const map = window.L ? AS.bgMap : null;
+    if(wxActive() && map){
+      if(!wx.layer){
+        map.createPane("wx").style.zIndex = 300;
+        wx.layer = L.tileLayer.wms("https://maps.dwd.de/geoserver/dwd/wms", {
+          layers:"dwd:Niederschlagsradar", format:"image/png", transparent:true,
+          version:"1.3.0", pane:"wx", opacity:.75, maxZoom:18, time:wxTime()
+        });
+      }
+      if(!map.hasLayer(wx.layer)) wx.layer.addTo(map);
+      if(wx.layer.wmsParams.time !== wxTime()) wx.layer.setParams({ time:wxTime() });
+      wxCredit.textContent = "Regenradar: Deutscher Wetterdienst, " +
+        new Date(wxTimeMs()).toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" }) + " Uhr";
+      wxCredit.hidden = false;
+    } else {
+      if(wx.layer && map && map.hasLayer(wx.layer)) map.removeLayer(wx.layer);
+      wxCredit.hidden = true;
+    }
+    AS.applyBgMap();
+  }
+  wxBt.addEventListener("click", () => { wx.on = !wx.on; AS.LS.set("ownerWx", wx.on); applyWx(); });
+  setInterval(() => { if(wxActive()) applyWx(); }, 60000);
+
+  // Kompass nur im Live-Modus, Regenradar nur im Feeder-Modus: bei jedem Quellenwechsel neu prüfen
+  const origSetSource = AS.setSource;
+  AS.setSource = src => { origSetSource(src); afterSourceChange(); };
+  function afterSourceChange(){
+    cmpBt.hidden = !(isIOS && typeof DeviceOrientationEvent !== "undefined" && !AS.source);
+    applyWx();
+  }
+
+  /* ============ Stufe 8: Flughafenansicht Basel-Mulhouse (LFSB) ============ */
+  // Vollbildkarte mit Vorfeld, Rollwegen, Pisten und Gebäuden aus OpenStreetMap (airport-lfsb.json im Repo,
+  // © OpenStreetMap-Mitwirkende, ODbL). Flugzeuge über /aircraft um LFSB, am Boden maßstäblich.
+  // Solange die Ansicht offen ist, pausiert der Abruf des Hauptradars.
+  const AP = { lat:47.5996, lon:7.5290, dataUrl:"airport-lfsb.json" };
+  const AP_POLL_MS = 2000, AP_STALE_S = 60, AP_TRAIL_MS = 3 * 60 * 1000, AP_TAXI_WIDTH = 23;
+  const AP_SPAN = { A1:12, A2:20, A3:36, A4:40, A5:62, A7:12, B1:15, B4:10 };
+  const AP_PLANE = "M0,-48C4,-48 5,-40 5,-30L5,-10L46,8L46,15L5,6L4,30L16,40L16,46L0,42L-16,46L-16,40L-4,30L-5,6L-46,15L-46,8L-5,-10L-5,-30C-5,-40 -4,-48 0,-48Z";
+  const apCss = document.createElement("style");
+  apCss.textContent = `
+    #ap-view{position:fixed;inset:0;z-index:3000;display:none;flex-direction:column;background:var(--bg);
+      padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+    #ap-view.open{display:flex}
+    #ap-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;
+      background:var(--surface);border-bottom:1px solid var(--line);font-family:var(--font)}
+    #ap-head .ap-title{font-weight:600;font-size:18px;color:var(--txt)}
+    #ap-head .ap-title span{font-family:var(--font-data);font-size:13px;color:var(--txt-dim);margin-left:6px}
+    #ap-head .ap-stat{font-family:var(--font-data);font-size:13px;color:var(--txt-dim)}
+    #ap-head .ap-stat b{color:var(--txt);font-weight:600}
+    #ap-head .ap-sp{flex:1}
+    #ap-head button{background:var(--bg);border:1px solid var(--line);color:var(--txt-dim);border-radius:4px;
+      padding:6px 10px;font:15px var(--font);cursor:pointer}
+    #ap-head button.ap-close{font-size:18px;line-height:1;padding:4px 10px}
+    #ap-map{flex:1;background:#0c0f14}
+    #ap-map .leaflet-control-attribution{background:rgba(18,22,28,.8);color:var(--txt-dim);font:10px var(--font)}
+    #ap-map .leaflet-control-attribution a{color:inherit}
+    .ap-ac{background:none;border:none}
+    .ap-ac-wrap{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer}
+    .ap-ac-svg{position:absolute;left:0;top:0;overflow:visible}
+    .ap-ac-lbl{position:absolute;white-space:nowrap;font:10.5px/1.25 var(--font-data);color:var(--txt);
+      text-shadow:0 0 3px #0a0d12,0 0 3px #0a0d12,0 0 2px #0a0d12;pointer-events:none}
+    .ap-ac-lbl small{display:block;color:var(--txt-dim);font-size:9.5px}
+    .ap-txt{background:none;border:none}
+    .ap-txt div{transform:translate(-50%,-50%);white-space:nowrap;font-family:var(--font-data);color:var(--txt-dim);
+      text-shadow:0 0 3px #0a0d12,0 0 3px #0a0d12;pointer-events:none}
+    .ap-rwy div{font-size:13px;color:#9aa6b3;font-weight:600}
+    .ap-gate div{font-size:9.5px}
+    .ap-bldg div{font-family:var(--font);font-size:11px}
+    #ap-map.ap-z-lo .ap-gate,#ap-map.ap-z-lo .ap-bldg{display:none}
+    #ap-map.ap-z-far .ap-rwy{display:none}
+    #ap-map .leaflet-popup-content-wrapper,#ap-map .leaflet-popup-tip{background:var(--surface);color:var(--txt);
+      border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.5)}
+    #ap-map .leaflet-popup-content{margin:10px 12px;font:14px/1.45 var(--font)}
+    #ap-map .leaflet-popup-content .cs{font-family:var(--font-data);font-size:16px}
+    #ap-map .leaflet-popup-content .mut{color:var(--txt-dim)}
+    #ap-map .leaflet-popup-content .rt{font-family:var(--font-data);color:var(--sel);margin-top:4px}
+    #ap-map a.leaflet-popup-close-button{color:var(--txt-dim)}`;
+  document.head.appendChild(apCss);
+  const apView = document.createElement("div");
+  apView.id = "ap-view"; apView.setAttribute("role", "dialog"); apView.setAttribute("aria-label", "Flughafen Basel-Mulhouse");
+  apView.innerHTML = `<div id="ap-head"><div class="ap-title">Basel-Mulhouse<span>LFSB</span></div>
+      <div class="ap-stat" id="ap-stat">Lade …</div><div class="ap-sp"></div>
+      <button data-ap="apron">Vorfeld</button><button data-ap="area">Umgebung</button>
+      <button class="ap-close" data-ap="close" aria-label="Schließen">×</button></div><div id="ap-map"></div>`;
+  document.body.appendChild(apView);
+  const apBt = obButton("Flughafen Basel-Mulhouse",
+    `<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10h14v11M9 21v-5h6v5M8 10V6h8v4M12 6V3"/></svg>`, "no3d");
+  let apMap = null, apTimer = null, apAnim = null, apFetching = false, apOpen = false;
+  const apScaled = [], apAc = {};
+  AS.paused = () => apOpen;
+  const apMpp = () => 156543.03392 * Math.cos(apMap.getCenter().lat * Math.PI / 180) / Math.pow(2, apMap.getZoom());
+  const apOnGround = ac => ac.alt_baro === "ground" || (typeof ac.gs === "number" && ac.gs < 35 && typeof ac.alt_baro === "number" && ac.alt_baro < 1500);
+  const apAltColor = alt => typeof alt !== "number" ? "#d98a3d" : alt < 5000 ? "#6f7d8c" : alt < 15000 ? "#8a97a5" : alt < 30000 ? "#a9b4c0" : "#cdd6e0";
+  const apFmtAlt = alt => alt === "ground" ? "Boden" : typeof alt !== "number" ? "" : alt < 5000 ? `${Math.round(alt / 100) * 100} ft` : `FL${String(Math.round(alt / 100)).padStart(3, "0")}`;
+
+  function openAirportView(){
+    if(!window.L){ AS.setNotice("Karte nicht verfügbar"); return; }
+    apView.classList.add("open"); apOpen = true;
+    if(!apMap) apInitMap(); else apMap.invalidateSize();
+    apPoll();
+    clearInterval(apTimer); apTimer = setInterval(apPoll, AP_POLL_MS);
+    clearInterval(apAnim); apAnim = setInterval(apAnimate, 250);
+  }
+  function closeAirportView(){
+    apView.classList.remove("open"); apOpen = false;
+    clearInterval(apTimer); clearInterval(apAnim);
+    AS.fetchData();
+  }
+  apBt.addEventListener("click", openAirportView);
+  apView.querySelector("#ap-head").addEventListener("click", e => {
+    const b = e.target.closest("button[data-ap]"); if(!b) return;
+    if(b.dataset.ap === "close") closeAirportView();
+    else if(b.dataset.ap === "apron") apMap.flyTo([47.5985, 7.5265], 16, { duration:.8 });
+    else apMap.flyTo([AP.lat, AP.lon], 11, { duration:.8 });
+  });
+  document.addEventListener("keydown", e => { if(apOpen && e.key === "Escape") closeAirportView(); });
+
+  function apInitMap(){
+    apMap = L.map("ap-map", { zoomControl:false, zoomSnap:.25, minZoom:8, maxZoom:19 }).setView([47.5985, 7.5265], 15.5);
+    apMap.attributionControl.setPrefix(false);
+    apMap.attributionControl.addAttribution('© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende, Kacheln © Esri');
+    apMap.createPane("apScrim").style.zIndex = 250;
+    apMap.createPane("apGround").style.zIndex = 400;
+    apMap.createPane("apTrail").style.zIndex = 450;
+    apMap.getPane("apTrail").style.pointerEvents = "none";
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom:19, maxNativeZoom:16 }).addTo(apMap);
+    L.rectangle([[-85, -180], [85, 180]], { pane:"apScrim", interactive:false, stroke:false, fillColor:"#0a0d12", fillOpacity:.62 }).addTo(apMap);
+    apMap.on("zoomend", apOnZoom);
+    apLoadGeo(); apOnZoom();
+  }
+  function apText(ll, text, cls){
+    L.marker(ll, { interactive:false, keyboard:false,
+      icon:L.divIcon({ className:"ap-txt " + cls, html:`<div>${esc(text)}</div>`, iconSize:[0, 0] }) }).addTo(apMap);
+  }
+  async function apLoadGeo(){
+    let fc;
+    try{ const r = await fetch(AP.dataUrl, { cache:"force-cache" }); if(!r.ok) throw 0; fc = await r.json(); }
+    catch(e){ AS.setNotice("Flughafendaten nicht geladen (airport-lfsb.json fehlt?)"); return; }
+    const R = L.canvas({ pane:"apGround", padding:.3 });
+    const feats = fc.features || [], by = pred => feats.filter(pred), aw = f => f.properties.aeroway || "";
+    L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "apron") },
+      { renderer:R, interactive:false, style:{ stroke:false, fillColor:"#1d242d", fillOpacity:1 } }).addTo(apMap);
+    const taxi = by(f => (aw(f) === "taxiway" || aw(f) === "taxilane") && f.geometry.type === "LineString");
+    for(const f of taxi){
+      const body = L.polyline(f.geometry.coordinates.map(c => [c[1], c[0]]),
+        { renderer:R, interactive:false, color:"#262e38", lineCap:"round", lineJoin:"round" }).addTo(apMap);
+      apScaled.push({ layer:body, widthM:parseFloat(f.properties.width) || AP_TAXI_WIDTH, minPx:1.5 });
+    }
+    for(const f of taxi) L.polyline(f.geometry.coordinates.map(c => [c[1], c[0]]),
+      { renderer:R, interactive:false, color:"#7d6a35", weight:1, opacity:.8 }).addTo(apMap);
+    for(const f of by(f => aw(f) === "runway" && f.geometry.type === "LineString")){
+      const ll = f.geometry.coordinates.map(c => [c[1], c[0]]);
+      const body = L.polyline(ll, { renderer:R, interactive:false, color:"#38414c", lineCap:"butt" }).addTo(apMap);
+      apScaled.push({ layer:body, widthM:parseFloat(f.properties.width) || 45, minPx:3 });
+      L.polyline(ll, { renderer:R, interactive:false, color:"#9aa6b3", weight:1, dashArray:"10 8", opacity:.7 }).addTo(apMap);
+      if(f.properties.ref && ll.length >= 2){
+        const a = ll[0], b = ll[ll.length - 1], brg = AS.bearingDeg(a[0], a[1], b[0], b[1]);
+        const n = d => String(((Math.round(d / 10) + 35) % 36) + 1).padStart(2, "0");
+        // Hinter der Schwelle (etwa 160 m auf der Piste) beschriften
+        const at = (p, q, m) => { const d = AS.haversineNm(p[0], p[1], q[0], q[1]) * 1852, t = Math.min(1, m / d);
+          return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; };
+        apText(at(a, b, 160), n(brg), "ap-rwy"); apText(at(b, a, 160), n((brg + 180) % 360), "ap-rwy");
+      }
+    }
+    L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "parking_position") },
+      { renderer:R, interactive:false, style:{ color:"#465160", weight:1, fill:false } }).addTo(apMap);
+    L.geoJSON({ type:"FeatureCollection", features:by(f => f.properties.building || aw(f) === "terminal" || aw(f) === "hangar") }, {
+      renderer:R, interactive:false,
+      style:f => aw(f) === "terminal" ? { color:"#2f6d96", weight:1, fillColor:"#24313f", fillOpacity:1 }
+              : aw(f) === "hangar" ? { color:"#3a4452", weight:1, fillColor:"#20262e", fillOpacity:1 }
+              : { color:"#353e4a", weight:1, fillColor:"#222831", fillOpacity:1 }
+    }).addTo(apMap);
+    for(const f of by(f => aw(f) === "gate" && f.properties.ref && f.geometry.type === "Point")){
+      const c = f.geometry.coordinates; apText([c[1], c[0]], f.properties.ref, "ap-gate");
+    }
+    for(const f of by(f => f.properties.name && f.geometry.type === "Polygon")){
+      const ring = f.geometry.coordinates[0];
+      apText([ring.reduce((s, c) => s + c[1], 0) / ring.length, ring.reduce((s, c) => s + c[0], 0) / ring.length], f.properties.name, "ap-bldg");
+    }
+    apOnZoom();
+  }
+  function apOnZoom(){
+    if(!apMap) return;
+    const z = apMap.getZoom(), mpp = apMpp();
+    for(const t of apScaled) t.layer.setStyle({ weight:Math.max(t.minPx, t.widthM / mpp) });
+    const el = $("ap-map");
+    el.classList.toggle("ap-z-lo", z < 16); el.classList.toggle("ap-z-far", z < 12.5);
+    for(const hex in apAc) apStyleMarker(apAc[hex]);
+    if(apOpen) apPoll();   // Zoomwechsel kann den Abfrageradius ändern
+  }
+  const apRadiusNm = () => apMap && apMap.getZoom() >= 13.5 ? 4 : 30;
+  async function apPoll(){
+    if(!apOpen || apFetching) return;
+    apFetching = true;
+    try{
+      const r = await fetch(`${BASE}/aircraft?lat=${AP.lat}&lon=${AP.lon}&radius=${apRadiusNm()}`, { cache:"no-store" });
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      const data = await r.json(), list = data.ac || data.aircraft || [], now = Date.now();
+      // Bezugszeit der Daten (der Server cacht einige Sekunden): seen_pos bezieht sich auf data.now
+      const dataNow = Number.isFinite(data.now) ? (data.now < 1e12 ? data.now * 1000 : data.now) : now;
+      const seen = new Set();
+      for(const ac of list){
+        if(!ac.hex || !Number.isFinite(ac.lat) || !Number.isFinite(ac.lon)) continue;
+        if(typeof ac.seen_pos === "number" && ac.seen_pos > AP_STALE_S) continue;
+        seen.add(ac.hex);
+        let e = apAc[ac.hex];
+        if(!e){
+          e = apAc[ac.hex] = { ac, ts:now, trail:[], marker:null, line:null };
+          e.marker = L.marker([ac.lat, ac.lon], { keyboard:false, icon:L.divIcon({ className:"ap-ac", iconSize:[0, 0],
+            html:`<div class="ap-ac-wrap"><svg class="ap-ac-svg" viewBox="-50 -50 100 100"><path d="${AP_PLANE}"/></svg><span class="ap-ac-lbl"></span></div>` }) }).addTo(apMap);
+          e.marker.on("click", () => apShowPopup(ac.hex));
+        }
+        const posTs = dataNow - (typeof ac.seen_pos === "number" ? ac.seen_pos : 0) * 1000;
+        if(e.posTs && posTs <= e.posTs){ e.seenAt = now; continue; }   // keine ältere Position übernehmen
+        e.ac = ac; e.ts = Math.min(posTs, now); e.posTs = posTs; e.seenAt = now;
+        const last = e.trail[e.trail.length - 1];
+        if(!last || last[0] !== ac.lat || last[1] !== ac.lon) e.trail.push([ac.lat, ac.lon, e.ts]);
+        while(e.trail.length && now - e.trail[0][2] > AP_TRAIL_MS) e.trail.shift();
+        const ll = e.trail.map(q => [q[0], q[1]]), color = apOnGround(ac) ? "#d98a3d" : "#4a9fd4";
+        if(!e.line) e.line = L.polyline(ll, { pane:"apTrail", interactive:false, weight:1.5, opacity:.45, color }).addTo(apMap);
+        else { e.line.setLatLngs(ll); e.line.setStyle({ color }); }
+        apStyleMarker(e);
+      }
+      for(const hex in apAc){
+        const e = apAc[hex];
+        if(!seen.has(hex) && now - (e.seenAt || e.ts) > 20000){
+          apMap.removeLayer(e.marker); if(e.line) apMap.removeLayer(e.line); delete apAc[hex];
+        }
+      }
+      let g = 0, a = 0; for(const hex in apAc) apOnGround(apAc[hex].ac) ? g++ : a++;
+      $("ap-stat").innerHTML = `Boden <b>${g}</b>, Luft <b>${a}</b>, ${new Date(now).toLocaleTimeString("de-DE")}`;
+    }catch(e){ $("ap-stat").textContent = "Keine Daten (" + e.message + ")"; }
+    finally{ apFetching = false; }
+  }
+  function apStyleMarker(e){
+    const el = e.marker.getElement(); if(!el) return;
+    const ac = e.ac, ground = apOnGround(ac);
+    const span = AP_SPAN[(ac.category || "").toUpperCase()] || 34;
+    const px = Math.round(Math.max(ground ? 14 : 18, Math.min(120, span / apMpp())));
+    const hdg = typeof ac.true_heading === "number" && ground ? ac.true_heading : (typeof ac.track === "number" ? ac.track : 0);
+    const w = el.firstChild, svg = w.firstChild, lbl = w.lastChild;
+    w.style.width = w.style.height = px + "px"; w.style.transform = `translate(${-px / 2}px, ${-px / 2}px)`;
+    svg.setAttribute("width", px); svg.setAttribute("height", px); svg.style.transform = `rotate(${hdg}deg)`;
+    const path = svg.firstChild;
+    path.setAttribute("fill", ground ? "#d98a3d" : apAltColor(ac.alt_baro));
+    path.setAttribute("stroke", "#0a0d12"); path.setAttribute("stroke-width", "3");
+    lbl.style.left = (px * .75) + "px"; lbl.style.top = (px * .15) + "px";
+    const cs = (ac.flight || "").trim() || ac.r || ac.hex.toUpperCase();
+    const sub = ground ? (typeof ac.gs === "number" && ac.gs >= 3 ? `${Math.round(ac.gs)} kt` : "")
+      : `${apFmtAlt(ac.alt_baro)}${typeof ac.baro_rate === "number" && Math.abs(ac.baro_rate) >= 300 ? (ac.baro_rate > 0 ? " ↑" : " ↓") : ""}`;
+    lbl.innerHTML = esc(cs) + (sub ? `<small>${esc(sub)}</small>` : "");
+  }
+  // Zwischen den Abfragen mit Geschwindigkeit und Kurs weiterrechnen, höchstens 12 s
+  function apAnimate(){
+    if(!apOpen) return;
+    const now = Date.now();
+    for(const hex in apAc){
+      const e = apAc[hex], ac = e.ac;
+      if(typeof ac.gs !== "number" || typeof ac.track !== "number" || ac.gs < 3) continue;
+      const dNm = ac.gs * Math.min(12, (now - e.ts) / 1000) / 3600, tr = ac.track * Math.PI / 180;
+      e.marker.setLatLng([ac.lat + dNm / 60 * Math.cos(tr), ac.lon + dNm / 60 * Math.sin(tr) / Math.cos(ac.lat * Math.PI / 180)]);
+    }
+  }
+  async function apShowPopup(hex){
+    const e = apAc[hex]; if(!e) return;
+    const ac = e.ac, cs = (ac.flight || "").trim(), names = AS.names;
+    const airline = cs && /^[A-Z]{3}\d/.test(cs) ? (names.airlines[cs.slice(0, 3)] || "") : "";
+    const type = ac.t ? (names.types[ac.t] || ac.t) : "";
+    const html = [
+      `<div class="cs">${esc(cs || ac.r || hex.toUpperCase())}</div>`,
+      airline ? `<div>${esc(airline)}</div>` : "",
+      `<div class="mut">${esc([type, ac.r].filter(Boolean).join(", "))}</div>`,
+      `<div class="mut">${esc(apFmtAlt(ac.alt_baro))}${typeof ac.gs === "number" ? ", " + Math.round(ac.gs) + " kt" : ""}</div>`,
+      `<div class="rt" id="ap-rt-${esc(hex)}">${cs ? "Route …" : ""}</div>`
+    ].join("");
+    L.popup({ closeButton:true, autoPan:true, offset:[0, -6] }).setLatLng(e.marker.getLatLng()).setContent(html).openOn(apMap);
+    if(!cs) return;
+    // Gleicher Routen-Speicher und gleiche Plausibilitätsprüfung wie im Radar
+    const j = await AS.getRoute({ flight:cs, lat:ac.lat, lon:ac.lon,
+      alt: ac.alt_baro === "ground" ? "ground" : ac.alt_baro, track:ac.track, vRate:ac.baro_rate });
+    const el = document.getElementById("ap-rt-" + hex); if(!el) return;
+    const rt = j && j.route;
+    el.textContent = rt && j.plausible !== false && rt.orig && rt.dest
+      ? `${rt.orig.iata || rt.orig.icao} → ${rt.dest.iata || rt.dest.icao}` : "Route unbekannt";
+  }
+
   /* ============ Start ============ */
   $("ownerThemeSeg").addEventListener("click", e => {
     const b = e.target.closest("button"); if(b) setTheme(b.dataset.theme);
@@ -527,4 +877,5 @@
   initSources();
   initFavs();
   if(AS.LS.get("ownerView3d", false)) setView3d(true);
+  afterSourceChange();
 })();
