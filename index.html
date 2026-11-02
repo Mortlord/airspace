@@ -694,17 +694,25 @@ svg.leaflet-image-layer.leaflet-interactive path {
   @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:700;font-display:swap;
     src:url('fonts/barlow-semi-condensed-700.woff2') format('woff2')}
 
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;
+    src:url('fonts/ibm-plex-mono-400.woff2') format('woff2')}
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;
+    src:url('fonts/ibm-plex-mono-600.woff2') format('woff2')}
   :root{
-    --bg:#0F1B2D;        /* Schirmgrund: tintiges Blaugrau */
-    --surface:#16263D;   /* Sheet, Bedienelemente */
-    --line:#2A3D57;      /* Ringe, Trenner, Rahmen */
-    --txt:#D3DCE8;
-    --txt-dim:#8193AB;
-    --target:#E8EEF5;    /* Ziele */
-    --sel:#D9A441;       /* einzige Signalfarbe: Auswahl, Warnungen */
-    --fav:#D9A441;       /* Favoriten und Alarmring (nur Owner) */
+    --bg:#12161c;        /* Grund: neutrales Dunkelgrau */
+    --surface:#1a1f27;   /* Karten, Bedienelemente, Sheet */
+    --surface-2:#202630; /* aktive Segmente */
+    --line:#2a323d;      /* Ringe, Trenner, Rahmen */
+    --txt:#c3ccd6;
+    --txt-hi:#e6ecf2;
+    --txt-dim:#97a2af;
+    --target:#cdd6e0;    /* Ziele */
+    --sel:#4a9fd4;       /* Auswahl und Akzent */
+    --warn:#d98a3d;      /* Warnungen, am Boden */
+    --fav:#d98a3d;       /* Favoriten und Alarmring (nur Owner) */
+    --ok:#5fb37c;
     --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
-    --font-data:var(--font); /* Schrift für Radar und Liste */
+    --font-data:'IBM Plex Mono',ui-monospace,'Courier New',monospace;   /* Schrift für Daten */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   /* Das Dokument selbst scrollt nicht. iOS lässt in der installierten Web-App das Dokument
@@ -720,18 +728,82 @@ svg.leaflet-image-layer.leaflet-interactive path {
   button{font-family:inherit}
   :focus-visible{outline:2px solid var(--sel);outline-offset:2px}
 
-  /* Kopf */
-  /* Kopfzeile: Anzahl links, Stand der Daten rechts */
-  .topline{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:14px 0 2px}
-  h1{font-weight:600;font-size:20px;line-height:1.25;margin:0;color:var(--txt)}
-  .clock{flex:none;color:var(--txt-dim);font-size:15px}
-  .clock.warn{color:var(--sel)}
-  .owner-badge{flex:none;align-self:center;font-size:13px;color:var(--fav);border:1px solid var(--fav);
-    border-radius:3px;padding:0 6px;margin-left:auto;line-height:20px}
-  .owner-badge[hidden]{display:none}
-  .status{color:var(--txt-dim);font-size:15px;margin:2px 0 4px}
+  /* Kopfzeile: Name links, Datenquelle (Owner) mittig, Stand der Daten rechts */
+  .topbar{display:flex;align-items:center;gap:10px;height:44px;margin:8px 0 6px}
+  .brand{display:flex;align-items:center;gap:8px;margin-right:auto}
+  .brand span{font-weight:700;font-size:17px;letter-spacing:.22em;color:var(--txt)}
+  .srcslot:empty{display:none}
+  h1{font-weight:400;font-size:12px;line-height:1.3;margin:0;color:var(--txt-dim);font-family:var(--font-data);
+    min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .clock{flex:none;color:var(--txt-dim);font-size:13px;font-family:var(--font-data);
+    min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:flex-end}
+  /* Karte „Über dir“: Countdown groß, Flug rechts daneben */
+  .ovcard{display:flex;align-items:stretch;gap:14px;padding:12px 14px;margin:0 0 10px;
+    background:var(--surface);border:1px solid var(--line);border-radius:8px}
+  .ovcard[hidden]{display:none}
+  .ovcard[role="button"]{cursor:pointer}
+  .ovcard[role="button"]:hover{border-color:#3a4552}
+  .ov-when{display:flex;flex-direction:column;justify-content:center;gap:2px;padding-right:14px;
+    border-right:1px solid var(--line);flex:none;min-width:84px}
+  .ov-lbl{font-family:var(--font-data);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--txt-dim)}
+  .ov-time{font-weight:600;font-size:40px;line-height:1;color:var(--txt-hi)}
+  .ov-info{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+  .ov-info>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ov-cs{font-family:var(--font-data);font-weight:600;font-size:17px;color:var(--sel)}
+  .ov-sub{font-size:16px;color:var(--txt)}
+  .ov-data{font-family:var(--font-data);font-size:12px;color:var(--txt-dim)}
+  .ovcard.none .ov-time{font-size:28px;color:var(--txt-dim)}
+  .ovcard.none .ov-sub{color:var(--txt-dim)}
+  .listmode .ovcard{padding:8px 12px;align-items:center}
+  .listmode .ov-when{flex-direction:row;align-items:baseline;gap:8px;border:0;padding:0;min-width:0}
+  .listmode .ov-time{font-size:22px}
+  .listmode .ov-info{flex-direction:row;align-items:baseline;gap:10px;margin-left:auto}
+  .listmode .ov-sub{display:none}
+  /* Umschalter Radar / Liste */
+  .viewseg{display:flex;gap:4px;padding:3px;background:#161a20;border:1px solid var(--line);border-radius:8px;margin:0 0 10px}
+  .viewseg button{flex:1;height:40px;background:transparent;border:0;border-radius:5px;color:var(--txt-dim);
+    font-size:16px;font-weight:500;cursor:pointer}
+  .viewseg button[aria-selected="true"]{background:var(--surface-2);color:var(--txt-hi);font-weight:600}
+  /* Suchfeld */
+  .searchrow{display:flex;align-items:center;gap:8px;height:46px;padding:0 12px;margin:0 0 10px;
+    background:var(--surface);border:1px solid var(--line);border-radius:6px;color:var(--txt-dim)}
+  .searchrow[hidden]{display:none}
+  .searchrow:focus-within{border-color:#3a4552}
+  .radar-status{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:6px 0 0}
+  /* Werkzeugleiste unter dem Radar */
+  .toolbar{display:flex;align-items:center;gap:6px;margin:8px 0 0}
+  .tb-sp{flex:1}
+  .ownertools{display:contents}
+  .tool{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;
+    background:var(--surface);border:1px solid var(--line);border-radius:6px;color:var(--txt-dim);cursor:pointer;
+    font-weight:600;font-size:15px}
+  .tool[hidden]{display:none}
+  .tool:hover{color:var(--txt);border-color:#3a4552}
+  .tool.active{color:var(--sel);border-color:var(--sel);background:#1d2a3a}
+  .tool svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .tool.chip{width:auto;padding:0 12px;gap:6px;font-family:var(--font-data);font-weight:400;font-size:13px;color:var(--txt)}
+  .tool.chip svg{width:12px;height:12px;stroke-width:2.2}
+  .rangewrap{position:relative}
+  .rangepop{position:absolute;left:0;bottom:52px;z-index:30;width:min(320px,calc(100vw - 40px));padding:10px;
+    background:var(--surface);border:1px solid #3a4552;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+  .rangepop[hidden]{display:none}
+  .pop-lbl{display:block;font-family:var(--font-data);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--txt-dim);margin:0 0 8px}
+  /* Einstellungen als Blatt über der Seite */
+  .settings{position:fixed;inset:0;z-index:40;background:rgba(8,10,14,.6);display:flex;justify-content:center;align-items:flex-end}
+  .settings[hidden]{display:none}
+  .set-panel{width:100%;max-width:520px;max-height:92vh;overflow-y:auto;overscroll-behavior-y:contain;
+    background:var(--bg);border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;
+    padding:8px 20px calc(env(safe-area-inset-bottom) + 24px)}
+  .set-head{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .set-head h2{margin:0;font-size:22px;font-weight:700;color:var(--txt-hi)}
+  .set-lbl{display:block;font-family:var(--font-data);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--txt-dim);margin:14px 0 2px}
+  .settings .toggle{margin-top:0;border-top:0}
+  .clock.warn{color:var(--warn)}
+  .status{color:var(--txt-dim);font-size:15px;margin:0 0 10px}
   .status[hidden]{display:none}
-  .status.warn{color:var(--sel)}
+  .status.warn{color:var(--warn)}
   .status a{color:inherit}
   .status.ov{color:var(--txt);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -754,39 +826,40 @@ svg.leaflet-image-layer.leaflet-interactive path {
   /* Kacheln minimal überlappen: verhindert Haarlinien zwischen Kacheln bei krummer Zoomstufe */
   .bgmap .leaflet-tile-container img{width:256.5px!important;height:256.5px!important}
   .bgmap.off{display:none}
-  .map-credit{margin:2px 0 8px;font-size:11px;color:var(--txt-dim);text-align:right;min-height:15px}
+  .map-credit{margin:2px 0 0;font-size:11px;color:var(--txt-dim);text-align:right;min-height:15px}
   .map-credit.off{visibility:hidden}
-  .data-credit{margin:2px 0 0;font-size:11px;color:var(--txt-dim);text-align:right}
+  .data-credit{margin:0;font-size:12px;color:var(--txt-dim);text-align:right;flex:none}
   .data-credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
   /* Suche */
-  .range-lbl{margin-top:14px}
-  #rangeSeg{margin-bottom:14px}
-  .search{display:block;width:100%;background:var(--surface);border:1px solid var(--line);
-    border-radius:4px;color:var(--txt);font-family:inherit;font-size:17px;
-    padding:13px 14px;outline:none;-webkit-appearance:none;appearance:none}
-  .search:focus{border-color:var(--txt-dim)}
+  .search{display:block;flex:1;min-width:0;background:transparent;border:0;color:var(--txt-hi);
+    font-family:var(--font-data);font-size:15px;padding:10px 0;outline:none;-webkit-appearance:none;appearance:none}
   .search::placeholder{color:var(--txt-dim)}
 
   /* Flugzeugliste */
-  .aclist{margin:14px 0 0}
+  .aclist{margin:0}
   .aclist[hidden]{display:none}
   .aclist table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:15px;font-family:var(--font-data)}
-  .aclist th{color:var(--txt-dim);font-weight:400;font-size:13px;text-align:left;
-    padding:0 3px 6px;border-bottom:1px solid var(--line)}
-  .aclist td{padding:9px 3px;border-bottom:1px solid var(--line);
+  .aclist table{font-size:12px}
+  .aclist th{color:var(--txt-dim);font-weight:400;font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+    text-align:left;padding:0 3px 6px;border-bottom:1px solid var(--line)}
+  .aclist td{padding:11px 3px;border-bottom:1px solid #222a33;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .aclist .num{text-align:right;font-variant-numeric:tabular-nums}
-  .aclist .cs{font-weight:600}
+  .aclist .cs{font-weight:600;color:var(--txt-hi)}
+  .aclist .cs::before{content:"";display:inline-block;width:6px;height:6px;margin:0 6px 1px 0;border-radius:50%}
+  .aclist tr.mark .cs::before{background:var(--fav)}
+  .aclist td.al{font-family:var(--font);font-size:14px}
   .aclist .dim{color:var(--txt-dim)}
   .aclist tbody tr{cursor:pointer}
   .aclist tbody tr:hover td{background:var(--surface)}
   .aclist tbody tr:focus-visible{outline:2px solid var(--sel);outline-offset:-2px}
-  .aclist tr.sel td{color:var(--sel)}
+  .aclist tr.sel td{background:#1a2533}
+  .aclist tr.sel td.cs{color:var(--sel)}
   .aclist td.fav{color:var(--fav)}
-  .aclist tr.mark td:first-child{box-shadow:inset 3px 0 0 var(--fav)}
-  .aclist .c-cs{width:21%} .aclist .c-al{width:22%} .aclist .c-rt{width:22%}
-  .aclist .c-fl{width:13%} .aclist .c-nm{width:11%} .aclist .c-kt{width:11%}
+  .aclist td.fav::after{content:"★";margin-left:4px;font-size:10px}
+  .aclist .c-cs{width:26%} .aclist .c-al{width:21%} .aclist .c-rt{width:19%}
+  .aclist .c-fl{width:13%} .aclist .c-nm{width:11%} .aclist .c-kt{width:10%}
   .aclist .empty{margin:10px 0 0;color:var(--txt-dim)}
 
   /* Umkreis */
@@ -802,11 +875,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
     margin-top:22px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
     font-size:17px;cursor:pointer}
   .toggle-next{margin-top:0;border-top:0}
+  .toggle[hidden]{display:none}
   .sw{width:44px;height:26px;border-radius:13px;background:var(--surface);border:1px solid var(--line);
     position:relative;flex:none;transition:background .15s}
   .sw::after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;
     background:var(--txt-dim);top:2px;left:2px;transition:left .15s,background .15s}
-  .sw.on{background:#35507A;border-color:#35507A}
+  .sw.on{background:#2b5a80;border-color:#2b5a80}
   .sw.on::after{left:20px;background:var(--target)}
 
   /* Fuß */
@@ -831,11 +905,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   .satwrap{position:relative;width:100%;height:230px;border-radius:6px;overflow:hidden;
     border:1px solid var(--line);margin:8px 0 4px}
-  .satmap{position:absolute;inset:0;background:#0B1422}
+  .satmap{position:absolute;inset:0;background:#0f1318}
   /* Kacheln minimal überlappen: verhindert Haarlinien beim Mitziehen der Karte */
   .satmap .leaflet-tile-container img{width:256.5px!important;height:256.5px!important}
   .satmap .leaflet-control-attribution{font-family:var(--font);font-size:10px;
-    background:rgba(15,27,45,.75);color:var(--txt-dim)}
+    background:rgba(18,22,28,.8);color:var(--txt-dim)}
   .satmap .leaflet-control-attribution a{color:var(--txt-dim)}
   .sat-plane{position:absolute;top:50%;left:50%;z-index:480;pointer-events:none;
     transform:translate(-50%,-50%) rotate(0deg);transition:transform .5s ease-out}
@@ -857,15 +931,20 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .route .arrow{color:var(--txt-dim);padding-top:8px}
   .route-doubt{margin:18px 0 4px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
     color:var(--txt-dim);font-size:16px}
-  .facts{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:16px 0 0;font-size:17px}
-  .facts dt{color:var(--txt-dim)}
-  .facts dd{margin:0;text-align:right}
+  .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 0}
+  .fact{display:flex;flex-direction:column;gap:2px;padding:8px 10px;background:var(--bg);border-radius:6px;min-width:0}
+  .fact .k{font-family:var(--font-data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt-dim)}
+  .fact .v{font-family:var(--font-data);font-size:15px;color:var(--txt-hi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sheet-actions{position:absolute;top:8px;right:56px;display:flex;gap:6px;z-index:2}
+  .sheet-actions:empty{display:none}
+  .cs-big{font-family:var(--font-data);font-weight:600}
+  .route .ap{font-family:var(--font-data);color:var(--sel)}
 
   /* Flughafenwetter (METAR) */
   .cat{display:inline-block;vertical-align:middle;margin-left:10px;font-size:14px;font-weight:600;
     line-height:1;padding:5px 9px;border-radius:3px;border:1px solid var(--line);color:var(--txt-dim)}
-  .cat.alert{border-color:var(--sel);color:var(--sel)}
-  .sub.warn{color:var(--sel)}
+  .cat.alert{border-color:var(--warn);color:var(--warn)}
+  .sub.warn{color:var(--warn)}
   .wxgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:18px 0 0;
     background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
   .wxcell{background:var(--surface);padding:12px 14px;min-width:0}
@@ -873,15 +952,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .wxcell .v{font-size:24px;font-weight:600;line-height:1.2;display:flex;align-items:center;gap:8px}
   .wxcell .d{color:var(--txt-dim);font-size:14px}
   .wxnow{margin:14px 0 0;font-size:17px}
-  .wxnow.alert{color:var(--sel)}
+  .wxnow.alert{color:var(--warn)}
   .clouds{margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line)}
   .clouds .k{color:var(--txt-dim);font-size:14px;margin-bottom:6px}
   .cloud{display:grid;grid-template-columns:minmax(0,1fr) 70px auto;gap:12px;align-items:center;
     font-size:16px;padding:3px 0}
-  .cloud.alert{color:var(--sel)}
+  .cloud.alert{color:var(--warn)}
   .cloud .bar{height:5px;border-radius:3px;background:var(--line);position:relative;overflow:hidden}
   .cloud .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--txt-dim)}
-  .cloud.alert .bar i{background:var(--sel)}
+  .cloud.alert .bar i{background:var(--warn)}
   .cloud .ft{text-align:right;color:var(--txt-dim);font-variant-numeric:tabular-nums}
   .rawob{margin:16px 0 0;font-size:14px;color:var(--txt-dim);word-break:break-word;
     font-variant-numeric:tabular-nums;letter-spacing:.02em}
@@ -893,11 +972,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </head>
 <body>
 <div class="page" id="page"><div class="inner">
-  <div class="topline">
-    <h1 id="headline">Flugzeuge im Umkreis</h1>
-    <span class="owner-badge" id="ownerBadge" hidden>Owner</span>
+  <header class="topbar">
+    <div class="brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#4a9fd4" aria-hidden="true"><path d="M21 15.5v-2l-8-4.5V3.5a1.5 1.5 0 0 0-3 0V9L2 13.5v2l8-2.2v4.2l-2.2 1.6v1.4L11.5 19l3.7.5v-1.4L13 16.5v-4.2z"/></svg>
+      <span>AIRSPACE</span>
+    </div>
+    <div class="srcslot" id="srcSlot"></div>
     <span class="clock" id="clock" title="Stand der Daten" aria-label="Stand der Daten"></span>
-  </div>
+  </header>
   <p class="status" id="status" aria-live="polite">Warte auf Standort …</p>
   <div class="trackbar" id="trackBar" hidden>
     <button class="backbtn" id="trackBack">
@@ -906,51 +988,69 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </button>
   </div>
 
-  <div class="radar-wrap">
-    <div class="bgmap" id="bgmap" aria-hidden="true"></div>
-    <canvas id="radar" aria-label="Radarbild der Flugzeuge im Umkreis"></canvas>
-  </div>
-  <p class="data-credit" id="dataCredit"><span id="dataCreditLbl">Flugdaten:</span> <a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> · <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a> (<a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL</a>)</p>
-  <p class="map-credit" id="mapCredit">Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames</p>
-
-  <span class="field-lbl range-lbl" id="rangeLbl">Umkreis in NM</span>
-  <div class="seg" id="rangeSeg" role="group" aria-labelledby="rangeLbl">
-    <button data-r="5">5</button>
-    <button data-r="10">10</button>
-    <button data-r="25">25</button>
-    <button data-r="50">50</button>
-    <button data-r="100">100</button>
+  <div class="ovcard" id="ovCard" hidden>
+    <div class="ov-when"><span class="ov-lbl" id="ovLbl"></span><span class="ov-time" id="ovTime"></span></div>
+    <div class="ov-info"><span class="ov-cs" id="ovCs"></span><span class="ov-sub" id="ovSub"></span><span class="ov-data" id="ovData"></span></div>
   </div>
 
-  <input class="search" id="search" type="search" placeholder="Callsign oder Hex suchen"
-         autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"
-         aria-label="Callsign oder Hex suchen">
+  <div class="viewseg" role="tablist" aria-label="Ansicht" id="viewSeg">
+    <button role="tab" id="tabRadar" aria-selected="true" aria-controls="viewRadar">Radar</button>
+    <button role="tab" id="tabList" aria-selected="false" aria-controls="viewList">Liste</button>
+  </div>
 
+  <div class="searchrow" id="searchRow" hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <input class="search" id="search" type="search" placeholder="Callsign suchen, auch weltweit"
+           autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"
+           aria-label="Callsign suchen, auch weltweit">
+  </div>
+
+  <section id="viewRadar" role="tabpanel" aria-labelledby="tabRadar">
+    <div class="radar-wrap">
+      <div class="bgmap" id="bgmap" aria-hidden="true"></div>
+      <canvas id="radar" aria-label="Radarbild der Flugzeuge im Umkreis"></canvas>
+    </div>
+    <div class="radar-status">
+      <h1 id="headline">Flugzeuge im Umkreis</h1>
+      <p class="data-credit" id="dataCredit"><span id="dataCreditLbl">Flugdaten:</span> <a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> · <a href="https://adsb.lol" target="_blank" rel="noopener">adsb.lol</a> (<a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL</a>)</p>
+    </div>
+    <p class="map-credit" id="mapCredit">Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames</p>
+    <div class="toolbar">
+      <div class="rangewrap">
+        <button class="tool chip" id="rangeBtn" aria-haspopup="true" aria-expanded="false" aria-controls="rangePop"><span id="rangeVal"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="rangepop" id="rangePop" hidden>
+          <span class="pop-lbl" id="rangeLbl">Umkreis in NM</span>
+          <div class="seg" id="rangeSeg" role="group" aria-labelledby="rangeLbl">
+            <button data-r="10">10</button>
+            <button data-r="20">20</button>
+            <button data-r="40">40</button>
+            <button data-r="80">80</button>
+            <button data-r="160">160</button>
+          </div>
+        </div>
+      </div>
+      <span class="tb-sp"></span>
+      <button class="tool" id="searchBtn" aria-label="Callsign suchen" aria-controls="searchRow" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+      </button>
+      <span class="ownertools" id="ownerTools"></span>
+      <button class="tool" id="settingsBtn" aria-label="Einstellungen" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <section id="viewList" role="tabpanel" aria-labelledby="tabList" hidden>
   <div class="aclist" id="acList" hidden>
     <table aria-labelledby="headline">
       <colgroup><col class="c-cs"><col class="c-al"><col class="c-rt"><col class="c-fl"><col class="c-nm"><col class="c-kt"></colgroup>
-      <thead><tr><th id="lhCs">Callsign</th><th id="lhAl">Airline</th><th id="lhRt">Route</th>
+      <thead><tr><th id="lhCs">Flug</th><th id="lhAl">Fluglinie</th><th id="lhRt">Route</th>
         <th id="lhFl" class="num">Höhe</th><th id="lhNm" class="num">NM</th><th id="lhKt" class="num">kt</th></tr></thead>
       <tbody id="acRows"></tbody>
     </table>
     <p class="empty" id="acEmpty" hidden></p>
   </div>
-
-
-  <div class="toggle" id="toggleLabels">
-    <span>Beschriftung für alle Flugzeuge</span>
-    <span class="sw" id="swLabels" role="switch" aria-checked="false" tabindex="0"></span>
-  </div>
-  <div class="toggle toggle-next" id="toggleMap">
-    <span>Karte im Hintergrund</span>
-    <span class="sw" id="swMap" role="switch" aria-checked="false" tabindex="0"></span>
-  </div>
-  <div class="toggle toggle-next" id="toggleMetar">
-    <span>Flughäfen mit Wetter</span>
-    <span class="sw" id="swMetar" role="switch" aria-checked="false" tabindex="0"></span>
-  </div>
-
-  <div id="ownerSlot" hidden></div>
+  </section>
 
   <nav class="foot">
     <a href="help.html">Hilfe</a>
@@ -959,11 +1059,39 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 </div></div>
 
+  <!-- Einstellungen -->
+  <div class="settings" id="settings" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
+    <div class="set-panel">
+      <div class="set-head">
+        <h2 id="setTitle">Einstellungen</h2>
+        <button class="tool" id="settingsClose" aria-label="Schließen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <span class="set-lbl" id="setDisplay">Anzeige</span>
+  <div class="toggle" id="toggleLabels">
+    <span>Alle Flugzeuge beschriften</span>
+    <span class="sw" id="swLabels" role="switch" aria-checked="false" tabindex="0"></span>
+  </div>
+  <div class="toggle toggle-next" id="toggleMap">
+    <span>Hintergrundkarte</span>
+    <span class="sw" id="swMap" role="switch" aria-checked="false" tabindex="0"></span>
+  </div>
+  <div class="toggle toggle-next" id="toggleMetar">
+    <span>Flughafenwetter</span>
+    <span class="sw" id="swMetar" role="switch" aria-checked="false" tabindex="0"></span>
+  </div>
+      <div id="setExtra"></div>
+      <div id="ownerSlot" hidden></div>
+    </div>
+  </div>
+
   <!-- Detail-Sheet -->
   <div class="sheet" id="sheet" role="dialog" aria-label="Flugdetails">
     <button class="closebtn" id="sheetClose" aria-label="Schließen">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
+    <div class="sheet-actions" id="sheetActions"></div>
     <div class="grip"></div>
     <div class="satwrap" id="satwrap" style="display:none">
       <div class="satmap" id="satmap"></div>
@@ -1039,9 +1167,11 @@ const TXT = {
     trackBack:"Zurück zu meinem Standort", radarAria:"Radarbild der Flugzeuge im Umkreis",
     dataCredit:"Flugdaten:",
     mapCredit:"Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames",
-    searchPh:"Callsign oder Hex suchen", rangeLbl:"Umkreis in NM",
-    tLabels:"Beschriftung für alle Flugzeuge", tMap:"Karte im Hintergrund", tMetar:"Flughäfen mit Wetter",
-    lhCs:"Callsign", lhAl:"Airline", lhRt:"Route", lhFl:"Höhe", lhNm:"NM", lhKt:"kt",
+    searchPh:"Callsign suchen, auch weltweit", rangeLbl:"Umkreis in NM",
+    tabRadar:"Radar", tabList:"Liste", viewAria:"Ansicht", settings:"Einstellungen", display:"Anzeige",
+    ovIn:"Über dir in", ovNone:"Über dir", routeTo:(a,b)=>`${a} nach ${b}`, nmUnit:"NM",
+    tLabels:"Alle Flugzeuge beschriften", tMap:"Hintergrundkarte", tMetar:"Flughafenwetter",
+    lhCs:"Flug", lhAl:"Fluglinie", lhRt:"Route", lhFl:"Höhe", lhNm:"NM", lhKt:"kt",
     listEmpty:"Gerade keine Flugzeuge im Umkreis.", listMatchEmpty:"Kein Treffer im Umkreis.",
     help:"Hilfe", legal:"Impressum & Datenschutz", close:"Schließen", photoAlt:"Foto des Flugzeugs"
   },
@@ -1090,9 +1220,11 @@ const TXT = {
     trackBack:"Back to my location", radarAria:"Radar display of nearby aircraft",
     dataCredit:"Flight data:",
     mapCredit:"Map: Esri, HERE, Garmin, © OpenStreetMap contributors; places: GeoNames",
-    searchPh:"Search callsign or hex", rangeLbl:"Radius in NM",
-    tLabels:"Labels for all aircraft", tMap:"Background map", tMetar:"Airports with weather",
-    lhCs:"Callsign", lhAl:"Airline", lhRt:"Route", lhFl:"Alt", lhNm:"NM", lhKt:"kt",
+    searchPh:"Search callsign, worldwide", rangeLbl:"Radius in NM",
+    tabRadar:"Radar", tabList:"List", viewAria:"View", settings:"Settings", display:"Display",
+    ovIn:"Overhead in", ovNone:"Overhead", routeTo:(a,b)=>`${a} to ${b}`, nmUnit:"NM",
+    tLabels:"Label all aircraft", tMap:"Background map", tMetar:"Airport weather",
+    lhCs:"Flight", lhAl:"Airline", lhRt:"Route", lhFl:"Alt", lhNm:"NM", lhKt:"kt",
     listEmpty:"No aircraft nearby right now.", listMatchEmpty:"No match nearby.",
     help:"Help", legal:"Legal notice & privacy", close:"Close", photoAlt:"Photo of the aircraft"
   }
@@ -1111,7 +1243,12 @@ const TXT = {
   el("dataCreditLbl").textContent=TXT.dataCredit;
   el("mapCredit").textContent=TXT.mapCredit;
   el("search").placeholder=TXT.searchPh; el("search").setAttribute("aria-label",TXT.searchPh);
+  el("searchBtn").setAttribute("aria-label",TXT.searchPh);
   el("rangeLbl").textContent=TXT.rangeLbl;
+  el("tabRadar").textContent=TXT.tabRadar; el("tabList").textContent=TXT.tabList;
+  el("viewSeg").setAttribute("aria-label",TXT.viewAria);
+  el("settingsBtn").setAttribute("aria-label",TXT.settings); el("setTitle").textContent=TXT.settings;
+  el("settingsClose").setAttribute("aria-label",TXT.close); el("setDisplay").textContent=TXT.display;
   el("toggleLabels").firstElementChild.textContent=TXT.tLabels;
   el("toggleMap").firstElementChild.textContent=TXT.tMap;
   el("toggleMetar").firstElementChild.textContent=TXT.tMetar;
@@ -1125,8 +1262,8 @@ const TXT = {
 })();
 
 const COL = {           // Canvas-Farben (entsprechen den CSS-Tokens)
-  bg:"#0F1B2D", line:"#2A3D57", dim:"#8193AB", txt:"#D3DCE8", target:[232,238,245], sel:"#D9A441",
-  dimRgb:[129,147,171], fav:"#D9A441"
+  bg:"#12161c", line:"#2a323d", dim:"#97a2af", txt:"#c3ccd6", target:[205,214,224], sel:"#4a9fd4",
+  dimRgb:[151,162,175], fav:"#d98a3d"
 };
 // Liest die Farben aus den CSS-Variablen; so folgt das Radar jeder Darstellung, die dort umgeschaltet wird.
 function hexRgb(h){ const m=/^#([0-9a-f]{6})$/i.exec(String(h).trim()); if(!m) return null;
@@ -1155,8 +1292,8 @@ const EARTH_R = 6371000, FT = 0.3048;
 const COMPASS16 = TXT.compass;
 
 let state = {
-  radius: LS.get("radius",25),
-  labels: LS.get("labels",false),
+  radius: normRadius(LS.get("radius",40)),
+  labels: LS.get("labels",true),
   bgmap:  LS.get("bgmap",true),
   metar:  LS.get("metar",false),
   selectedApt: null,                  // ICAO des Flughafens, dessen Wetter im Sheet steht
@@ -1179,19 +1316,26 @@ const fmtInt = n => Number(n).toLocaleString(LOCALE);
 const fmtTime = ts => new Date(ts).toLocaleTimeString(LOCALE);
 const fmtDec = (n,dig) => Number(n).toLocaleString(LOCALE,{minimumFractionDigits:dig,maximumFractionDigits:dig});
 
+function normRadius(r){
+  const R=[10,20,40,80,160];
+  return R.reduce((b,x)=>Math.abs(x-r)<Math.abs(b-r)?x:b, 40);
+}
+
 /* ============ Andockstellen für owner.js ============ */
 // Gäste laden owner.js nie; dann bleibt AS.source leer und AirSpace verhält sich wie bisher.
 // source: {id, label, center:{lat,lon}, url:()=>string, headers:()=>object}
 const AS = {
   source: null,
   isFav: ()=>false,             // Owner: Favorit? (Farbe in Radar und Liste)
-  radarStyle: "airspace",       // Owner: "classic" zeichnet das Radar wie die frühere private App
+  radarStyle: "classic",        // Radarstil für alle; "airspace" zeichnet den früheren Lotsenschirm
   heading: ()=>0,               // Owner: Blickrichtung in Grad (Kompass); 0 = Norden oben
   mapForced: ()=>false,         // Owner: Kartenebene zeigen, auch wenn die Hintergrundkarte aus ist (Regenradar)
   paused: ()=>false,            // Owner: Datenabruf des Radars anhalten (Flughafenansicht)
+  onSheet: ()=>{},              // Owner: Detailblatt geöffnet (a) oder Flughafen/geschlossen (null)
   get bgMap(){ if(window.L) initBgMap(); return bgMap; },
   applyBgMap(){ applyBgMapVisibility(); updateBgMap(true); requestDraw(); },
   getRoute, get names(){ return NAMES; },
+  get view(){ return view; },
   rowMark: ()=>false,           // Owner: Zeile markieren (z. B. im Alarmradius)
   rings: [],                    // Owner: Zusatzringe [{nm, color:()=>Farbe}]
   get state(){ return state; },
@@ -1422,9 +1566,9 @@ function drawRadar(){
     const isFav=AS.isFav(a);
     const match=matchesQuery(a);
     if(classic){
-      const {sz,col:cc}=drawClassicTarget(x,y,a,isSel,match,hdg);
+      const {sz,col:cc}=drawClassicTarget(x,y,a,isSel,match,hdg,isFav);
       const label=(a.flight||a.hex||"").trim();
-      if(label && match) labelJobs.push({label,x,y,sz,isSel,col:cc,dist});
+      if(label && match && (state.labels || isSel || isFav || state.track)) labelJobs.push({label,x,y,sz,isSel,col:cc,dist});
       dotHits.push({x,y,a,dist,brg});
       continue;
     }
@@ -1514,7 +1658,8 @@ function drawClassicFrame(c,R,font,onMap,hdg=0){
     ctx.lineWidth=i===3?1.5:.7; ctx.stroke();
     if(f<1){
       // Entfernung auf der Südost-Diagonale, damit sie nicht mit den Himmelsrichtungen kollidiert
-      const lx=c+R*f*Math.SQRT1_2, ly=c+R*f*Math.SQRT1_2, t=String(Math.round(state.radius*f));
+      const v=state.radius*f, lx=c+R*f*Math.SQRT1_2, ly=c+R*f*Math.SQRT1_2;
+      const t=Number.isInteger(v) ? String(v) : fmtDec(v,1);
       ctx.font=`10px ${font}`; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.shadowColor="rgba(8,11,16,.95)"; ctx.shadowBlur=4;
       ctx.fillStyle=onMap ? "rgba(180,205,235,.95)" : "#7c8794";
@@ -1542,8 +1687,8 @@ function drawClassicMe(x,y){
   ctx.beginPath(); ctx.arc(x,y,9,0,Math.PI*2); ctx.strokeStyle=COL.sel; ctx.globalAlpha=.35; ctx.lineWidth=1.5; ctx.stroke();
   ctx.globalAlpha=1;
 }
-function drawClassicTarget(x,y,a,isSel,match,hdg=0){
-  const sz=isSel?9:5.5, col=classicAltColor(a);
+function drawClassicTarget(x,y,a,isSel,match,hdg=0,isFav=false){
+  const sz=isSel?9:5.5, col=isFav ? COL.fav : classicAltColor(a);
   ctx.save(); ctx.translate(x,y); ctx.rotate(((a.track??0)-hdg-90)*Math.PI/180);
   ctx.beginPath(); ctx.moveTo(sz,0); ctx.lineTo(-sz*.6,-sz*.5); ctx.lineTo(-sz*.3,0); ctx.lineTo(-sz*.6,sz*.5); ctx.closePath();
   ctx.fillStyle=col; ctx.globalAlpha=!match ? .25 : (isSel ? 1 : .8); ctx.fill();
@@ -1764,20 +1909,60 @@ function updateStatus(){
     } else if(stale){
       msg=TXT.noConnStale; warn=true;
     } else {
-      // Normalbetrieb: Überflug-Vorhersage; abgelaufene Vorhersagen verwerfen
+      // Normalbetrieb: Überflug-Vorhersage als Karte; abgelaufene Vorhersagen verwerfen
       if(state.overhead && Date.now()-state.overhead.at>5000) state.overhead=null;
-      ov=!!state.overhead;
-      msg=ov ? overheadText(state.overhead) : TXT.noOverhead;
+      ov=true;
     }
   }
+  renderOvCard(ov ? (state.overhead||false) : null);
   el.hidden=!msg;
   el.classList.toggle("warn",warn);
-  el.classList.toggle("ov",ov);
-  // Die Vorhersage zählt laufend herunter; Screenreader sollen das nicht alle 2 s vorlesen
-  el.setAttribute("aria-live", ov ? "off" : "polite");
-  if(ov){ el.setAttribute("role","button"); el.tabIndex=0; }
-  else  { el.removeAttribute("role"); el.removeAttribute("tabindex"); }
   if(html) el.innerHTML=msg; else el.textContent=msg;
+}
+
+// Karte „Über dir“: null = ausblenden, false = kein Überflug, Objekt = Prognose
+function renderOvCard(o){
+  const card=$("ovCard");
+  if(o===null){ card.hidden=true; return; }
+  card.hidden=false;
+  card.classList.toggle("none",!o);
+  if(!o){
+    $("ovLbl").textContent=TXT.ovNone; $("ovTime").textContent="–";
+    $("ovCs").textContent=""; $("ovSub").textContent=TXT.noOverhead; $("ovData").textContent="";
+    card.removeAttribute("role"); card.removeAttribute("tabindex"); card.removeAttribute("aria-label");
+    return;
+  }
+  const rem=Math.max(0,(o.at-Date.now())/1000);
+  let when;
+  if(rem<10){ $("ovLbl").textContent=TXT.ovNone; when=TXT.ovNow; }
+  else {
+    const r=Math.round(rem/5)*5;                               // 5-s-Schritte: genauer ist die Prognose nicht
+    $("ovLbl").textContent=TXT.ovIn;
+    when=`${o.unsure?"≈":""}${Math.floor(r/60)}:${String(r%60).padStart(2,"0")}`;
+  }
+  $("ovTime").textContent=when;
+  const a=state.aircraft.find(x=>x.hex===o.hex);
+  const cs=(o.flight||"").trim()||(o.hex||"").toUpperCase();
+  $("ovCs").textContent=cs;
+  // Zweite Zeile: Fluglinie und Route (nur plausible Routen), sonst Flugzeugtyp
+  const airline=(o.flight && /^[A-Z]{3}\d/.test(o.flight)) ? (NAMES.airlines[o.flight.slice(0,3)]||"") : "";
+  let route="";
+  if(a && cs.length>=3){
+    const e=routeCache.get(cs);
+    if(!routeFresh(cs)) getRoute(a).then(()=>updateStatus());
+    const rt=e && e.j && e.j.plausible!==false && e.j.route;
+    if(rt){
+      const f=rt.orig?.city||rt.orig?.iata||rt.orig?.icao, t=rt.dest?.city||rt.dest?.iata||rt.dest?.icao;
+      if(f && t) route=TXT.routeTo(f,t);
+    }
+  }
+  const type=o.type ? (NAMES.types[o.type]||o.type) : "";
+  $("ovSub").textContent=[airline, route].filter(Boolean).join(", ") || type;
+  const dir=COMPASS16[Math.round(o.az/22.5)%16];
+  $("ovData").textContent=[a?flText(a):"", (a&&a.gs!=null)?Math.round(a.gs)+" kt":"", `${fmtDec(o.slant/1000,1)} km ${dir}`]
+    .filter(Boolean).join("  ·  ");
+  card.setAttribute("role","button"); card.tabIndex=0;
+  card.setAttribute("aria-label", overheadText(o));
 }
 
 // Rohformat (adsb.fi/adsb.lol via Server) -> einheitliches Objekt (dst NIE übernehmen, immer selbst rechnen)
@@ -2298,7 +2483,7 @@ function renderList(){
     const cls=[a.hex===selHex?"sel":"", AS.rowMark(a)?"mark":""].filter(Boolean).join(" ");
     return `<tr data-hex="${esc(a.hex)}" tabindex="0"${cls?` class="${cls}"`:""}>`+
       `<td class="cs${AS.isFav(a)?" fav":""}">${esc(cs)}</td>`+
-      `<td${al?"":' class="dim"'}>${al?esc(al):"–"}</td>`+
+      `<td class="al${al?"":" dim"}">${al?esc(al):"–"}</td>`+
       `<td${rt?"":' class="dim"'}>${rt||"–"}</td>`+
       `<td class="num">${esc(flText(a))||"–"}</td>`+
       `<td class="num">${d==null?"–":fmtDec(d,1)}</td>`+
@@ -2415,11 +2600,13 @@ function renderSheet(a){
     [TXT.fBrg, sheetBrg!=null ? Math.round(sheetBrg)+"°" : null],
     ["Hex", a.hex ? a.hex.toUpperCase() : null]
   ].filter(r=>r[1]!=null && r[1]!=="");
-  html+=`<dl class="facts">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
+  html+=`<div class="facts">${rows.map(([k,v])=>`<div class="fact"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>`).join("")}</div>`;
   $("sheetBody").innerHTML=html;
+  AS.onSheet(a);
 }
 
 function closeSheet(){
+  AS.onSheet(null);
   $("sheet").classList.remove("open");
   state.selected=null;
   state.selectedApt=null;
@@ -2631,6 +2818,7 @@ function trendText(t){
 const CAT_TEXT=TXT.cat;
 
 function openAirportSheet(st){
+  AS.onSheet(null);
   if($("sheet").classList.contains("open") && state.selected){ state.selected=null; resetSatMap(); }
   state.selected=null;
   state.selectedApt=st.icao;
@@ -2733,12 +2921,62 @@ canvas.addEventListener("click",ev=>{
 });
 
 /* ============ UI-Verdrahtung ============ */
+// Umkreis: Knopf in der Werkzeugleiste öffnet die Auswahl
+function setRangePop(open){
+  $("rangePop").hidden=!open; $("rangeBtn").setAttribute("aria-expanded",String(open));
+}
+function showRange(){ $("rangeVal").textContent=`${state.radius} ${TXT.nmUnit}`; }
+$("rangeBtn").onclick=e=>{ e.stopPropagation(); setRangePop($("rangePop").hidden); };
+document.addEventListener("click",e=>{ if(!$("rangePop").hidden && !e.target.closest(".rangewrap")) setRangePop(false); });
 document.querySelectorAll("#rangeSeg button").forEach(b=>
   b.onclick=()=>{
     state.radius=+b.dataset.r; LS.set("radius",state.radius);
     document.querySelectorAll("#rangeSeg button").forEach(x=>x.classList.toggle("active",x===b));
+    showRange(); setRangePop(false);
     updateCounts(); updateBgMap(); requestDraw(); fetchData(); maybeFetchMetar();
   });
+showRange();
+
+// Ansicht Radar oder Liste; die Suche steht in der Liste immer, im Radar auf Knopfdruck
+let view=LS.get("view","radar")==="list" ? "list" : "radar", searchOpen=false;
+function applyView(){
+  const list=view==="list";
+  $("viewRadar").hidden=list; $("viewList").hidden=!list;
+  $("tabRadar").setAttribute("aria-selected",String(!list)); $("tabList").setAttribute("aria-selected",String(list));
+  $("page").classList.toggle("listmode",list);
+  $("searchRow").hidden=!(list || searchOpen || state.query);
+  $("searchBtn").classList.toggle("active",!$("searchRow").hidden && !list);
+  $("searchBtn").setAttribute("aria-expanded",String(!$("searchRow").hidden));
+  if(!list){ sizeCanvas(); if(bgMap) bgMap.invalidateSize(); updateBgMap(true); requestDraw(); window.dispatchEvent(new Event("resize")); }
+  else renderList();
+}
+function setView(v){ view=v; LS.set("view",v); applyView(); }
+$("tabRadar").onclick=()=>setView("radar");
+$("tabList").onclick=()=>setView("list");
+$("viewSeg").addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"||e.key==="ArrowRight"){ e.preventDefault(); setView(view==="list"?"radar":"list"); $(view==="list"?"tabList":"tabRadar").focus(); }
+});
+$("searchBtn").onclick=()=>{
+  searchOpen=$("searchRow").hidden;
+  if(!searchOpen && state.query){ $("search").value=""; state.query=""; updateCounts(); requestDraw(); }
+  applyView(); if(searchOpen) $("search").focus();
+};
+$("ovCard").addEventListener("click",()=>{ if($("ovCard").getAttribute("role")==="button") openOverhead(); });
+$("ovCard").addEventListener("keydown",e=>{
+  if((e.key==="Enter"||e.key===" ") && $("ovCard").getAttribute("role")==="button"){ e.preventDefault(); openOverhead(); }
+});
+
+// Einstellungen
+function openSettings(){ $("settings").hidden=false; $("settingsClose").focus(); }
+function closeSettings(){ $("settings").hidden=true; $("settingsBtn").focus(); }
+$("settingsBtn").onclick=openSettings;
+$("settingsClose").onclick=closeSettings;
+$("settings").addEventListener("click",e=>{ if(e.target===$("settings")) closeSettings(); });
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape") return;
+  if(!$("settings").hidden) closeSettings();
+  else if(!$("rangePop").hidden) setRangePop(false);
+}); 
 
 $("search").addEventListener("input",e=>{ state.query=e.target.value.trim(); updateCounts(); requestDraw(); });
 $("search").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); runSearch(); } });
@@ -2782,7 +3020,7 @@ function initBgMap(){
   bgMap.createPane("scrim").style.zIndex=250;
   bgScrim=L.rectangle([[-85,-180],[85,180]],{
     pane:"scrim", renderer:L.svg({pane:"scrim"}), interactive:false,
-    stroke:false, fillColor:"#0F1B2D", fillOpacity:.35
+    stroke:false, fillColor:"#12161c", fillOpacity:.45
   });
   applyBgLayers();
 }
@@ -2822,9 +3060,10 @@ function updateBgMap(force){
 }
 applyBgMapVisibility();
 
-// Umkreis-Button initial markieren
+// Umkreis-Button initial markieren, Ansicht herstellen
 document.querySelectorAll("#rangeSeg button").forEach(b=>
   b.classList.toggle("active",+b.dataset.r===state.radius));
+applyView();
 
 
 /* ---- Service Worker (Offline-Shell, via Blob registriert) ---- */

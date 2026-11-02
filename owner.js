@@ -1,15 +1,15 @@
 /* owner.js: Zusatzfunktionen von AirSpace nur für den Betreiber.
-   index.html lädt diese Datei nur, wenn ein Owner-Token im Browser liegt (Anmeldung über #owner).
-   Alles, was hier passiert, prüft der Server zusätzlich anhand des Tokens.
+   index.html lädt diese Datei nur, wenn ein Owner-Code im Browser liegt
+   (Anmeldung: fünfmal auf die Uhrzeit tippen oder adsb-radar.de/#owner).
+   Alles, was hier passiert, prüft der Server zusätzlich anhand des Codes.
 
-   Stufe 1: Owner-Kennzeichen, Abmelden, Umschalter zwischen AirSpace-Darstellung und klassischer Darstellung
-   Stufe 2: Datenquelle Live (GPS), Feeder (Heim-Pi) oder Fixpunkt
-   Stufe 3: Favoriten mit Telegram-Alarm, Markierung in Radar und Liste, Alarmring
-   Stufe 4: Link zur 3D-Empfangsreichweite (coverage.html)
-   Stufe 5: 3D-Ansicht (three.js aus three.min.js im eigenen Repo)
-   Stufe 6: Regenradar des DWD im Feeder-Modus
-   Stufe 7: Kompass (iOS, Live-Modus)
-   Stufe 8: Flughafenansicht Basel-Mulhouse (airport-lfsb.json im eigenen Repo) */
+   Eingebaut in die gemeinsame Oberfläche statt angehängt:
+   - Kopfzeile: Wähler für die Datenquelle (Standort, Heim-Pi, Fixpunkt)
+   - Werkzeugleiste: 3D-Ansicht, Regenradar (nur Heim-Pi), Flughafen Basel-Mulhouse
+   - Detailblatt: Stern für Favoriten
+   - Einstellungen: Kompass (iPhone, Standort) und der Block „Nur für dich“
+     mit Favoriten, Empfangsreichweite (coverage.html) und Abmelden
+   - Radar und Liste: Favoriten orange, Alarmring und Markierung im Alarmradius */
 (function(){
   "use strict";
   const AS = window.AS;
@@ -23,91 +23,119 @@
   const PUSH_EVERY_MS = 60000;  // Standort für die Alarme höchstens einmal pro Minute melden
   const hdr = () => ({ "X-Auth-Token": token });
 
-  /* ============ Darstellung (Farben und Schrift der privaten App) ============ */
+  /* ============ Texte (Deutsch / Englisch wie der Rest der App) ============ */
+  const T = {
+    de:{ src:"Datenquelle", live:"Standort", liveSub:"GPS dieses Geräts", feeder:"Heim-Pi", feederSub:"Eigener Empfänger",
+         fix:"Fixpunkt", fixSub:"Feste Position", off:"nicht erreichbar", denied:"Der Server hat den Owner-Code abgelehnt. Mit fünfmal Tippen auf die Uhr neu anmelden.",
+         mine:"Nur für dich", favs:"Favoriten", favPh:"+ Präfix", favAdd:"Favorit hinzufügen", favNote:`Telegram meldet Favoriten im Umkreis von ${ALERT_NM} NM um deinen Standort.`,
+         favLoading:"Wird geladen …", favNone:"Noch keine Favoriten.", favErr:"Favoriten gerade nicht abrufbar.", remove:f=>`${f} entfernen`,
+         noGps:"Ohne Standort kann ich die Favoriten nicht speichern.", saveErr:"Favoriten konnten nicht gespeichert werden. Bitte später erneut versuchen.",
+         star:"Favorit", starOn:"Favorit entfernen", starOff:"Als Favorit merken", starPrefix:p=>`Favorit über ${p}`,
+         coverage:"Empfangsreichweite in 3D", logout:"Abmelden", logoutAsk:"Owner-Bereich auf diesem Gerät abmelden?",
+         compass:"Kompass", compassSub:"Radar folgt der Blickrichtung", compassOn:"Radar folgt der Blickrichtung", compassOff:"Ausrichtung: Norden oben",
+         compassDenied:"Kompass-Zugriff abgelehnt", compassNA:"Kompass nicht verfügbar",
+         t3d:"3D-Ansicht", tRain:"Regenradar", tAirport:"Flughafen Basel-Mulhouse",
+         rainCredit:t=>`Regenradar: Deutscher Wetterdienst, ${t} Uhr`, v3fail:"Die 3D-Ansicht konnte nicht geladen werden (three.min.js fehlt?).",
+         apLoading:"Lade …", apApron:"Vorfeld", apArea:"Umgebung", apClose:"Schließen", apGround:"Boden", apAir:"Luft", apNoData:"Keine Daten",
+         apNoMap:"Karte nicht verfügbar", apNoGeo:"Flughafendaten nicht geladen (airport-lfsb.json fehlt?)", apRoute:"Route …", apRouteNone:"Route unbekannt" },
+    en:{ src:"Data source", live:"Location", liveSub:"GPS of this device", feeder:"Home Pi", feederSub:"Own receiver",
+         fix:"Fixed point", fixSub:"Fixed position", off:"not reachable", denied:"The server rejected the owner code. Tap the clock five times to sign in again.",
+         mine:"Only for you", favs:"Favourites", favPh:"+ prefix", favAdd:"Add favourite", favNote:`Telegram reports favourites within ${ALERT_NM} NM of your location.`,
+         favLoading:"Loading …", favNone:"No favourites yet.", favErr:"Favourites currently unavailable.", remove:f=>`Remove ${f}`,
+         noGps:"Without your location the favourites cannot be saved.", saveErr:"Favourites could not be saved. Please try again later.",
+         star:"Favourite", starOn:"Remove favourite", starOff:"Add to favourites", starPrefix:p=>`Favourite via ${p}`,
+         coverage:"Reception range in 3D", logout:"Sign out", logoutAsk:"Sign out of the owner area on this device?",
+         compass:"Compass", compassSub:"Radar follows your heading", compassOn:"Radar follows your heading", compassOff:"Orientation: north up",
+         compassDenied:"Compass access denied", compassNA:"Compass not available",
+         t3d:"3D view", tRain:"Rain radar", tAirport:"Basel-Mulhouse airport",
+         rainCredit:t=>`Rain radar: Deutscher Wetterdienst, ${t}`, v3fail:"The 3D view could not be loaded (three.min.js missing?).",
+         apLoading:"Loading …", apApron:"Apron", apArea:"Area", apClose:"Close", apGround:"Ground", apAir:"Air", apNoData:"No data",
+         apNoMap:"Map not available", apNoGeo:"Airport data not loaded (airport-lfsb.json missing?)", apRoute:"Route …", apRouteNone:"Route unknown" }
+  }[AS.LANG];
+
+  /* ============ Stile für die Owner-Bausteine ============ */
   const style = document.createElement("style");
   style.textContent = `
-    @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;
-      src:url('fonts/ibm-plex-mono-400.woff2') format('woff2')}
-    @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;
-      src:url('fonts/ibm-plex-mono-600.woff2') format('woff2')}
-    :root[data-theme="classic"]{
-      --bg:#12161c; --surface:#1a1f27; --line:#2a323d;
-      --txt:#c3ccd6; --txt-dim:#97a2af; --target:#cdd6e0;
-      --sel:#4a9fd4; --fav:#d98a3d;
-      --font-data:'IBM Plex Mono','Courier New',monospace;
-    }
-    :root[data-theme="classic"] .aclist table{font-size:12px}
-    :root[data-theme="classic"] .aclist .c-cs{width:22%} :root[data-theme="classic"] .aclist .c-al{width:19%}
-    :root[data-theme="classic"] .aclist .c-rt{width:20%} :root[data-theme="classic"] .aclist .c-fl{width:15%}
-    :root[data-theme="classic"] .aclist .c-nm{width:12%} :root[data-theme="classic"] .aclist .c-kt{width:12%}
-    #ownerSlot .seg button:disabled{color:var(--txt-dim);opacity:.45;cursor:default}
-    .favadd{display:flex;gap:8px}
-    .favadd .search{flex:1;min-width:0}
-    .favadd button{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:4px;
-      color:var(--txt);font-size:16px;padding:0 16px;cursor:pointer}
-    .favs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
-    .favchip{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--line);
-      border-radius:4px;color:var(--txt);font-family:var(--font-data);font-size:14px;padding:5px 8px;cursor:pointer}
-    .favchip.live{border-color:var(--fav);color:var(--fav)}
-    .favchip svg{opacity:.6}
-    .owner-note{margin:8px 0 0;font-size:14px;color:var(--txt-dim)}
-    .owner-note a{color:inherit}
-  `;
+    .src-wrap{position:relative}
+    .src-chip{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;background:var(--surface);
+      border:1px solid var(--line);border-radius:16px;color:var(--txt);font:12px var(--font-data);letter-spacing:.04em;
+      text-transform:uppercase;cursor:pointer}
+    .src-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+    .src-chip svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+    .src-menu{position:absolute;right:0;top:40px;z-index:35;min-width:220px;padding:6px;background:var(--surface);
+      border:1px solid #3a4552;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+    .src-menu[hidden]{display:none}
+    .src-menu .pop-lbl{margin:4px 8px 6px}
+    .src-opt{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:4px 8px;background:transparent;
+      border:0;border-radius:6px;color:var(--txt);text-align:left;cursor:pointer;font-size:17px}
+    .src-opt:hover:not(:disabled){background:var(--surface-2)}
+    .src-opt:disabled{opacity:.45;cursor:default}
+    .src-opt .rad{width:18px;height:18px;border-radius:50%;border:2px solid #3a4552;flex:none;display:flex;align-items:center;justify-content:center}
+    .src-opt[aria-checked="true"] .rad{border-color:var(--sel)}
+    .src-opt[aria-checked="true"] .rad::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--sel)}
+    .src-opt small{display:block;font-size:13px;color:var(--txt-dim)}
+    .mine{margin:18px 0 0;padding:12px 14px 6px;background:#161a20;border:1px solid var(--line);border-radius:8px}
+    .mine .set-lbl{margin:0 0 8px}
+    .mine h3{margin:0 0 8px;font-size:17px;font-weight:400;color:var(--txt)}
+    .favs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .favchip{height:34px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2a2219;border:1px solid #8a5a2b;
+      border-radius:17px;color:#e3a462;font:13px var(--font-data);cursor:pointer}
+    .favchip.live{background:#3a2a17;border-color:var(--fav)}
+    .favchip svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
+    .favin{width:96px;height:34px;padding:0 10px;background:var(--bg);border:1px dashed #3a4552;border-radius:17px;
+      color:var(--txt-hi);font:13px var(--font-data);outline:none}
+    .favin:focus{border-style:solid;border-color:var(--txt-dim)}
+    .owner-note{margin:8px 0 0;font-size:13px;color:var(--txt-dim)}
+    .mine-links{display:flex;justify-content:space-between;align-items:center;min-height:44px;margin-top:10px;
+      border-top:1px solid #222a33;font-size:16px}
+    .mine-links a,.mine-links button{color:var(--txt-dim);background:none;border:0;padding:10px 0;font-size:16px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+    .mine-links a:hover,.mine-links button:hover{color:var(--txt)}
+    .starbtn{height:36px;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--bg);border:1px solid var(--line);
+      border-radius:6px;color:var(--txt-dim);font-size:15px;font-weight:600;cursor:pointer}
+    .starbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linejoin:round}
+    .starbtn[aria-pressed="true"]{background:#2a2219;border-color:var(--fav);color:#e3a462}
+    .starbtn[aria-pressed="true"] svg{fill:var(--fav);stroke:var(--fav)}
+    .starbtn:disabled{cursor:default}
+    .toggle small{display:block;font-size:13px;color:var(--txt-dim)}`;
   document.head.appendChild(style);
-
-  function setTheme(t){
-    if(t === "classic") document.documentElement.dataset.theme = "classic";
-    else delete document.documentElement.dataset.theme;
-    AS.radarStyle = t === "classic" ? "classic" : "airspace";
-    AS.LS.set("ownerTheme", t);
-    AS.refreshTheme();
-    markSeg("ownerThemeSeg", "theme", t);
-    if(typeof v3 !== "undefined" && v3.on){ v3.groundKey = null; draw3d(true); }
+  const ICON = {
+    chev:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+    x:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    star:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>'
+  };
+  // Knopf in der Werkzeugleiste unter dem Radar
+  function toolButton(label, html){
+    const b = document.createElement("button"); b.className = "tool";
+    b.innerHTML = html; b.setAttribute("aria-label", label); b.title = label;
+    $("ownerTools").appendChild(b); return b;
   }
 
-  /* ============ Oberfläche ============ */
-  const slot = $("ownerSlot");
-  slot.innerHTML = `
-    <span class="field-lbl" id="ownerSrcLbl">Datenquelle</span>
-    <div class="seg" id="ownerSrcSeg" role="group" aria-labelledby="ownerSrcLbl">
-      <button data-src="live">Live</button>
-      <button data-src="feeder" disabled>Feeder</button>
-      <button data-src="fixpoint" disabled>Fixpunkt</button>
-    </div>
-    <p class="owner-note" id="ownerSrcNote"></p>
-    <p class="owner-note" id="covLink" hidden><a href="coverage.html">Empfangsreichweite des Heim-Pi in 3D</a></p>
-
-    <span class="field-lbl" id="favLbl">Favoriten</span>
-    <div class="favadd">
-      <input class="search" id="favInput" type="text" placeholder="Callsign oder Anfang, z. B. EZS"
-        autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"
-        aria-labelledby="favLbl">
-      <button id="favAdd">Hinzufügen</button>
-    </div>
-    <div class="favs" id="favList"></div>
-    <p class="owner-note" id="favNote">Telegram meldet Favoriten im Umkreis von ${ALERT_NM} NM um deinen Standort.</p>
-
-    <span class="field-lbl" id="ownerThemeLbl">Darstellung</span>
-    <div class="seg" id="ownerThemeSeg" role="group" aria-labelledby="ownerThemeLbl">
-      <button data-theme="airspace">AirSpace</button>
-      <button data-theme="classic">Klassisch</button>
-    </div>
-    <p class="owner-note">Owner-Bereich, nur in diesem Browser. <a href="#logout">Abmelden</a></p>`;
-  slot.hidden = false;
-  $("ownerBadge").hidden = false;
-
-  function markSeg(id, key, val){
-    for(const b of $(id).querySelectorAll("button")) b.classList.toggle("active", b.dataset[key] === val);
-  }
-
-  /* ============ Stufe 2: Datenquelle ============ */
+  /* ============ Datenquelle: Wähler in der Kopfzeile ============ */
   const SOURCES = {
-    feeder:   { id:"feeder",   label:"Feeder",   center:null,
+    feeder:   { id:"feeder",   label:T.feeder, center:null,
                 url:()=>`${BASE}/feeder`, headers:hdr },
-    fixpoint: { id:"fixpoint", label:"Fixpunkt", center:null,
+    fixpoint: { id:"fixpoint", label:T.fix,    center:null,
                 url:()=>`${BASE}/fixpoint?radius=${AS.fetchRadius()}`, headers:hdr }
   };
+  const SRC_IDS = ["live", "feeder", "fixpoint"];
+  const srcName = id => id === "feeder" ? T.feeder : id === "fixpoint" ? T.fix : T.live;
+  $("srcSlot").innerHTML = `<div class="src-wrap">
+      <button class="src-chip" id="srcChip" aria-haspopup="true" aria-expanded="false" aria-controls="srcMenu">
+        <span class="dot" aria-hidden="true"></span><span id="srcName">${esc(T.live)}</span>${ICON.chev}</button>
+      <div class="src-menu" id="srcMenu" role="menu" aria-label="${esc(T.src)}" hidden>
+        <span class="pop-lbl">${esc(T.src)}</span>
+        ${SRC_IDS.map(id => `<button class="src-opt" role="menuitemradio" aria-checked="false" data-src="${id}"${id === "live" ? "" : " disabled"}>
+          <span class="rad" aria-hidden="true"></span><span>${esc(srcName(id))}<small id="srcSub-${id}">${esc(id === "live" ? T.liveSub : id === "feeder" ? T.feederSub : T.fixSub)}</small></span></button>`).join("")}
+      </div></div>`;
   let denied = 0;
+  function setSrcMenu(open){ $("srcMenu").hidden = !open; $("srcChip").setAttribute("aria-expanded", String(open)); }
+  $("srcChip").addEventListener("click", e => { e.stopPropagation(); setSrcMenu($("srcMenu").hidden); });
+  document.addEventListener("click", e => { if(!$("srcMenu").hidden && !e.target.closest(".src-wrap")) setSrcMenu(false); });
+  document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("srcMenu").hidden){ setSrcMenu(false); $("srcChip").focus(); } });
+  $("srcMenu").addEventListener("click", e => {
+    const b = e.target.closest("button[data-src]");
+    if(b && !b.disabled){ selectSource(b.dataset.src); setSrcMenu(false); }
+  });
 
   async function check(id){
     try{
@@ -125,45 +153,55 @@
     const src = SOURCES[id];
     if(!src || !src.center) id = "live";
     AS.LS.set("ownerSource", id);
-    markSeg("ownerSrcSeg", "src", id);
+    $("srcName").textContent = srcName(id);
+    for(const b of $("srcMenu").querySelectorAll(".src-opt")) b.setAttribute("aria-checked", String(b.dataset.src === id));
     const now = AS.source ? AS.source.id : "live";
     if(now !== id) AS.setSource(id === "live" ? null : SOURCES[id]);
   }
 
-  $("ownerSrcSeg").addEventListener("click", e => {
-    const b = e.target.closest("button");
-    if(b && !b.disabled) selectSource(b.dataset.src);
-  });
-
   async function initSources(){
     const [f, x] = await Promise.all([check("feeder"), check("fixpoint")]);
     SOURCES.feeder.center = f; SOURCES.fixpoint.center = x;
-    $("covLink").hidden = !f;          // Stufe 4: Reichweite gibt es nur mit erreichbarem Feeder
-    $("ownerSrcSeg").querySelector('[data-src="feeder"]').disabled = !f;
-    $("ownerSrcSeg").querySelector('[data-src="fixpoint"]').disabled = !x;
-    const note = [];
-    if(!f) note.push("Feeder gerade nicht erreichbar");
-    if(!x) note.push("Fixpunkt nicht eingerichtet oder nicht erreichbar");
-    $("ownerSrcNote").textContent = note.join(". ") + (note.length ? "." : "");
-    if(denied >= 2){
-      AS.setNotice("Der Server hat den Owner-Token abgelehnt. Mit #owner neu anmelden.", 12000);
-      $("ownerSrcNote").textContent = "Token abgelehnt.";
+    $("covLink").hidden = !f;          // Empfangsreichweite gibt es nur mit erreichbarem Heim-Pi
+    for(const [id, ok] of [["feeder", f], ["fixpoint", x]]){
+      $("srcMenu").querySelector(`[data-src="${id}"]`).disabled = !ok;
+      $("srcSub-" + id).textContent = (id === "feeder" ? T.feederSub : T.fixSub) + (ok ? "" : ", " + T.off);
     }
+    if(denied >= 2) AS.setNotice(T.denied, 12000);
     selectSource(AS.LS.get("ownerSource", "live"));
   }
 
-  /* ============ Stufe 3: Favoriten und Alarme ============ */
+  /* ============ Einstellungen: Block „Nur für dich“ ============ */
+  const slot = $("ownerSlot");
+  slot.innerHTML = `<div class="mine">
+      <span class="set-lbl">${esc(T.mine)}</span>
+      <h3 id="favLbl">${esc(T.favs)}</h3>
+      <div class="favs" id="favList" aria-labelledby="favLbl"></div>
+      <p class="owner-note" id="favNote">${esc(T.favNote)}</p>
+      <div class="mine-links">
+        <a href="coverage.html" id="covLink" hidden>${esc(T.coverage)}</a>
+        <button id="ownerLogout">${esc(T.logout)}</button>
+      </div></div>`;
+  slot.hidden = false;
+  $("ownerLogout").addEventListener("click", () => {
+    if(!confirm(T.logoutAsk)) return;
+    try{ for(const k of ["ownerToken","ownerSource","ownerView3d","ownerWx","ownerTheme"]) localStorage.removeItem("asl_" + k); }catch(e){}
+    location.reload();
+  });
+
+  /* ============ Favoriten und Alarme ============ */
   // Der Server ist die Wahrheit. Vor jedem Speichern wird die aktuelle Liste geholt und nur die
   // gewünschte Änderung angewendet; so überschreibt AirSpace nie eine Liste, die anderswo geändert wurde.
   let favs = null;                // null = noch nicht vom Server geladen
   let pushChain = Promise.resolve();
   let lastPush = 0;
 
-  function favMatch(cs){
-    if(!favs || !cs) return false;
+  const favHit = cs => {          // passender Eintrag (genau oder Präfix) oder null
+    if(!favs || !cs) return null;
     const u = cs.trim().toUpperCase();
-    return favs.some(f => { const v = String(f).trim().toUpperCase(); return v && u.startsWith(v); });
-  }
+    return favs.find(f => { const v = String(f).trim().toUpperCase(); return v && u.startsWith(v); }) || null;
+  };
+  const favMatch = cs => !!favHit(cs);
   AS.isFav = a => favMatch(a.flight);
   AS.rowMark = a => {
     const g = AS.state.gpsPos;
@@ -184,10 +222,7 @@
   function push(change){
     pushChain = pushChain.then(async () => {
       const g = AS.state.gpsPos;
-      if(!g){
-        if(change) AS.setNotice("Ohne Standort kann ich die Favoriten nicht speichern.");
-        return false;
-      }
+      if(!g){ if(change) AS.setNotice(T.noGps); return false; }
       try{
         let list = await fetchFavs();
         if(change) list = change(list);
@@ -201,11 +236,11 @@
         });
         if(!r.ok) throw new Error("update " + r.status);
         favs = list; lastPush = Date.now();
-        renderFavs(); AS.renderList(); AS.requestDraw();
+        renderFavs(); renderStar(); AS.renderList(); AS.requestDraw();
         return true;
       }catch(e){
         console.warn("Owner push:", e.message);
-        if(change) AS.setNotice("Favoriten konnten nicht gespeichert werden. Bitte später erneut versuchen.");
+        if(change) AS.setNotice(T.saveErr);
         return false;
       }
     });
@@ -214,35 +249,54 @@
 
   function renderFavs(){
     const box = $("favList");
-    if(favs === null){ box.innerHTML = `<span class="owner-note">Wird geladen …</span>`; return; }
-    if(!favs.length){ box.innerHTML = `<span class="owner-note">Noch keine Favoriten.</span>`; return; }
-    const live = new Set(AS.state.aircraft.map(a => (a.flight || "").toUpperCase()));
-    box.innerHTML = favs.map(f => {
-      const isLive = [...live].some(cs => cs.startsWith(String(f).toUpperCase()));
-      return `<button class="favchip${isLive ? " live" : ""}" data-fav="${esc(f)}" aria-label="${esc(f)} entfernen">`+
-        `${esc(f)}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" `+
-        `stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;
-    }).join("");
+    const input = `<label style="display:flex"><span style="position:absolute;width:1px;height:1px;overflow:hidden">${esc(T.favAdd)}</span>`+
+      `<input class="favin" id="favInput" type="text" placeholder="${esc(T.favPh)}" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"></label>`;
+    if(document.activeElement && document.activeElement.id === "favInput") return;   // nicht beim Tippen neu aufbauen
+    if(favs === null){ box.innerHTML = `<span class="owner-note">${esc(T.favLoading)}</span>`; return; }
+    const live = AS.state.aircraft.map(a => (a.flight || "").toUpperCase());
+    box.innerHTML = (favs.length ? "" : `<span class="owner-note" style="margin:0 6px 0 0">${esc(T.favNone)}</span>`) + favs.map(f => {
+      const isLive = live.some(cs => cs.startsWith(String(f).toUpperCase()));
+      return `<button class="favchip${isLive ? " live" : ""}" data-fav="${esc(f)}" aria-label="${esc(T.remove(f))}">${esc(f)}${ICON.x}</button>`;
+    }).join("") + input;
   }
-
   function addFav(){
     const inp = $("favInput");
     const v = inp.value.trim().toUpperCase().replace(/\s+/g, "");
-    if(!/^[A-Z0-9]{2,8}$/.test(v)){ inp.value = ""; return; }
     inp.value = "";
+    if(!/^[A-Z0-9]{2,8}$/.test(v)) return;
+    inp.blur();
     push(list => list.includes(v) ? list : [...list, v]);
   }
-  $("favAdd").addEventListener("click", addFav);
-  $("favInput").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); addFav(); } });
+  $("favList").addEventListener("keydown", e => { if(e.target.id === "favInput" && e.key === "Enter"){ e.preventDefault(); addFav(); } });
+  $("favList").addEventListener("focusout", e => { if(e.target.id === "favInput" && e.target.value.trim()) addFav(); });
   $("favList").addEventListener("click", e => {
     const b = e.target.closest("button[data-fav]");
     if(b) push(list => list.filter(f => f !== b.dataset.fav));
   });
 
+  // Stern im Detailblatt: genau dieses Callsign merken oder entfernen
+  let sheetAc = null;
+  function renderStar(){
+    const box = $("sheetActions");
+    const cs = sheetAc && (sheetAc.flight || "").trim().toUpperCase();
+    if(!cs || favs === null){ box.innerHTML = ""; return; }
+    const hit = favHit(cs), exact = hit && hit.toUpperCase() === cs;
+    const label = exact ? T.starOn : hit ? T.starPrefix(hit) : T.starOff;
+    box.innerHTML = `<button class="starbtn" id="starBtn" aria-pressed="${hit ? "true" : "false"}" aria-label="${esc(label)}" title="${esc(label)}"${hit && !exact ? " disabled" : ""}>${ICON.star}${esc(T.star)}</button>`;
+  }
+  AS.onSheet = a => { sheetAc = a; renderStar(); };
+  $("sheetActions").addEventListener("click", e => {
+    if(!e.target.closest("#starBtn") || !sheetAc) return;
+    const cs = (sheetAc.flight || "").trim().toUpperCase();
+    const hit = favHit(cs);
+    if(hit && hit.toUpperCase() === cs) push(list => list.filter(f => f.toUpperCase() !== cs));
+    else if(!hit) push(list => list.includes(cs) ? list : [...list, cs]);
+  });
+
   async function initFavs(){
     renderFavs();
-    try{ favs = await fetchFavs(); }catch(e){ favs = null; $("favNote").textContent = "Favoriten gerade nicht abrufbar."; }
-    renderFavs(); AS.renderList(); AS.requestDraw();
+    try{ favs = await fetchFavs(); }catch(e){ favs = null; $("favNote").textContent = T.favErr; }
+    renderFavs(); renderStar(); AS.renderList(); AS.requestDraw();
   }
 
   // Standort für die Telegram-Alarme regelmäßig melden, solange die Seite sichtbar ist
@@ -268,14 +322,6 @@
     .radar-wrap.is3d .v3-canvas,.radar-wrap.is3d .v3-labels{display:block}
     .radar-wrap.is3d #radar{visibility:hidden}
     .radar-wrap.is3d .bgmap{display:none}
-    .ob-col{position:absolute;top:0;right:0;z-index:4;display:flex;flex-direction:column;gap:6px}
-    .ob-btn{width:40px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;
-      background:var(--surface);border:1px solid var(--line);border-radius:4px;color:var(--txt-dim);
-      font:600 14px var(--font);cursor:pointer}
-    .ob-btn[hidden]{display:none}
-    .ob-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-    .ob-btn.active{color:var(--sel);border-color:var(--sel)}
-    .radar-wrap.is3d .ob-btn.no3d{display:none}
     .v3-lbl{position:absolute;white-space:nowrap;font:10px var(--font-data);color:var(--txt-dim);
       text-shadow:0 0 3px var(--bg),0 0 3px var(--bg);transform:translate(-50%,-50%)}
     .v3-dir{font:600 12px var(--font);color:var(--txt)}
@@ -286,14 +332,8 @@
   document.head.appendChild(v3css);
   const v3cv = document.createElement("canvas"); v3cv.className = "v3-canvas";
   const v3lb = document.createElement("div");    v3lb.className = "v3-labels";
-  // Knopfspalte oben rechts am Radar: 3D, Kompass, Regenradar, Flughafen
-  const obCol = document.createElement("div"); obCol.className = "ob-col";
-  function obButton(label, html, extra){
-    const b = document.createElement("button"); b.className = "ob-btn" + (extra ? " " + extra : "");
-    b.innerHTML = html; b.setAttribute("aria-label", label); b.title = label; obCol.appendChild(b); return b;
-  }
-  const v3bt = obButton("3D-Ansicht ein- oder ausschalten", "3D");
-  wrap.append(v3cv, v3lb, obCol);
+  const v3bt = toolButton(T.t3d, "3D");
+  wrap.append(v3cv, v3lb);
 
   const V3_FT_KM = 0.0003048, V3_NM_KM = 1.852;
   const v3 = { on:false, loading:null, ready:false, renderer:null, scene:null, camera:null, ground:null, planes:null,
@@ -524,7 +564,7 @@
     v3bt.setAttribute("aria-pressed", String(on));
     if(!on){ v3lb.innerHTML = ""; v3.labels = []; AS.requestDraw(); return; }
     loadThree().then(() => { v3.dataKey = null; draw3d(true); })
-      .catch(() => { setView3d(false); AS.setNotice("Die 3D-Ansicht konnte nicht geladen werden (three.min.js fehlt?)."); });
+      .catch(() => { setView3d(false); AS.setNotice(T.v3fail); });
   }
   v3bt.addEventListener("click", () => setView3d(!v3.on));
   // Neue Daten, anderer Umkreis oder andere Auswahl: Szene neu aufbauen (Prüfung jede Sekunde)
@@ -537,9 +577,11 @@
   const CMP_THRESHOLD = 5, CMP_ALPHA = 0.15;
   const angleDelta = (a, b) => (b - a + 540) % 360 - 180;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const cmpBt = obButton("Radar nach Blickrichtung drehen",
-    `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>`, "no3d");
-  cmpBt.hidden = true;
+  $("setExtra").insertAdjacentHTML("beforeend",
+    `<div class="toggle toggle-next" id="toggleCompass" hidden><span>${esc(T.compass)}<small>${esc(T.compassSub)}</small></span>`+
+    `<span class="sw" id="swCompass" role="switch" aria-checked="false" tabindex="0"></span></div>`);
+  const cmpRow = $("toggleCompass"), cmpSw = $("swCompass");
+  const cmpShow = on => { cmpSw.classList.toggle("on", on); cmpSw.setAttribute("aria-checked", String(on)); };
   AS.heading = () => (cmp.on && !AS.source) ? cmp.applied : 0;
   function onOrientation(e){
     if(typeof e.webkitCompassHeading !== "number" || isNaN(e.webkitCompassHeading)) return;
@@ -552,18 +594,19 @@
     if(cmp.on){
       cmp.on = false; cmp.smooth = null; cmp.applied = 0;
       window.removeEventListener("deviceorientation", onOrientation);
-      cmpBt.classList.remove("active"); AS.setNotice("Ausrichtung: Norden oben", 2500); AS.requestDraw(); return;
+      cmpShow(false); AS.setNotice(T.compassOff, 2500); AS.requestDraw(); return;
     }
     try{
       if(typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function"){
-        if(await DeviceOrientationEvent.requestPermission() !== "granted"){ AS.setNotice("Kompass-Zugriff abgelehnt"); return; }
+        if(await DeviceOrientationEvent.requestPermission() !== "granted"){ AS.setNotice(T.compassDenied); return; }
       }
-    }catch(e){ AS.setNotice("Kompass nicht verfügbar"); return; }
+    }catch(e){ AS.setNotice(T.compassNA); return; }
     cmp.on = true; cmp.smooth = null; cmp.applied = 0;
     window.addEventListener("deviceorientation", onOrientation);
-    cmpBt.classList.add("active"); AS.setNotice("Radar folgt der Blickrichtung", 2500); AS.requestDraw();
+    cmpShow(true); AS.setNotice(T.compassOn, 2500); AS.requestDraw();
   }
-  cmpBt.addEventListener("click", toggleCompass);
+  cmpRow.addEventListener("click", toggleCompass);
+  cmpSw.addEventListener("keydown", e => { if(e.key === " " || e.key === "Enter"){ e.preventDefault(); toggleCompass(); } });
 
   /* ============ Stufe 6: Regenradar (DWD, nur im Feeder-Modus) ============ */
   // Niederschlagsradar des Deutschen Wetterdienstes als Ebene über der Hintergrundkarte.
@@ -572,8 +615,8 @@
   const WX_STEP = 5 * 60000;
   const wxTimeMs = () => Math.floor((Date.now() - 8 * 60000) / WX_STEP) * WX_STEP;
   const wxTime = () => new Date(wxTimeMs()).toISOString().replace(/\.\d+Z$/, ".000Z");
-  const wxBt = obButton("Regenradar ein- oder ausschalten",
-    `<svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1 .5-8A5 5 0 0 1 17 8a3.5 3.5 0 0 1 0 7z"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2"/></svg>`, "no3d");
+  const wxBt = toolButton(T.tRain,
+    `<svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1 .5-8A5 5 0 0 1 17 8a3.5 3.5 0 0 1 0 7z"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2"/></svg>`);
   const wxCredit = document.createElement("p"); wxCredit.className = "map-credit"; wxCredit.hidden = true;
   $("mapCredit").after(wxCredit);
   const wxActive = () => wx.on && !!AS.source && AS.source.id === "feeder";
@@ -592,8 +635,7 @@
       }
       if(!map.hasLayer(wx.layer)) wx.layer.addTo(map);
       if(wx.layer.wmsParams.time !== wxTime()) wx.layer.setParams({ time:wxTime() });
-      wxCredit.textContent = "Regenradar: Deutscher Wetterdienst, " +
-        new Date(wxTimeMs()).toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" }) + " Uhr";
+      wxCredit.textContent = T.rainCredit(new Date(wxTimeMs()).toLocaleTimeString(AS.LANG === "de" ? "de-DE" : "en-GB", { hour:"2-digit", minute:"2-digit" }));
       wxCredit.hidden = false;
     } else {
       if(wx.layer && map && map.hasLayer(wx.layer)) map.removeLayer(wx.layer);
@@ -608,7 +650,7 @@
   const origSetSource = AS.setSource;
   AS.setSource = src => { origSetSource(src); afterSourceChange(); };
   function afterSourceChange(){
-    cmpBt.hidden = !(isIOS && typeof DeviceOrientationEvent !== "undefined" && !AS.source);
+    cmpRow.hidden = !(isIOS && typeof DeviceOrientationEvent !== "undefined" && !AS.source);
     applyWx();
   }
 
@@ -663,22 +705,22 @@
   const apView = document.createElement("div");
   apView.id = "ap-view"; apView.setAttribute("role", "dialog"); apView.setAttribute("aria-label", "Flughafen Basel-Mulhouse");
   apView.innerHTML = `<div id="ap-head"><div class="ap-title">Basel-Mulhouse<span>LFSB</span></div>
-      <div class="ap-stat" id="ap-stat">Lade …</div><div class="ap-sp"></div>
-      <button data-ap="apron">Vorfeld</button><button data-ap="area">Umgebung</button>
-      <button class="ap-close" data-ap="close" aria-label="Schließen">×</button></div><div id="ap-map"></div>`;
+      <div class="ap-stat" id="ap-stat">${esc(T.apLoading)}</div><div class="ap-sp"></div>
+      <button data-ap="apron">${esc(T.apApron)}</button><button data-ap="area">${esc(T.apArea)}</button>
+      <button class="ap-close" data-ap="close" aria-label="${esc(T.apClose)}">×</button></div><div id="ap-map"></div>`;
   document.body.appendChild(apView);
-  const apBt = obButton("Flughafen Basel-Mulhouse",
-    `<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10h14v11M9 21v-5h6v5M8 10V6h8v4M12 6V3"/></svg>`, "no3d");
+  const apBt = toolButton(T.tAirport,
+    `<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10h14v11M9 21v-5h6v5M8 10V6h8v4M12 6V3"/></svg>`);
   let apMap = null, apTimer = null, apAnim = null, apFetching = false, apOpen = false;
   const apScaled = [], apAc = {};
   AS.paused = () => apOpen;
   const apMpp = () => 156543.03392 * Math.cos(apMap.getCenter().lat * Math.PI / 180) / Math.pow(2, apMap.getZoom());
   const apOnGround = ac => ac.alt_baro === "ground" || (typeof ac.gs === "number" && ac.gs < 35 && typeof ac.alt_baro === "number" && ac.alt_baro < 1500);
   const apAltColor = alt => typeof alt !== "number" ? "#d98a3d" : alt < 5000 ? "#6f7d8c" : alt < 15000 ? "#8a97a5" : alt < 30000 ? "#a9b4c0" : "#cdd6e0";
-  const apFmtAlt = alt => alt === "ground" ? "Boden" : typeof alt !== "number" ? "" : alt < 5000 ? `${Math.round(alt / 100) * 100} ft` : `FL${String(Math.round(alt / 100)).padStart(3, "0")}`;
+  const apFmtAlt = alt => alt === "ground" ? T.apGround : typeof alt !== "number" ? "" : alt < 5000 ? `${Math.round(alt / 100) * 100} ft` : `FL${String(Math.round(alt / 100)).padStart(3, "0")}`;
 
   function openAirportView(){
-    if(!window.L){ AS.setNotice("Karte nicht verfügbar"); return; }
+    if(!window.L){ AS.setNotice(T.apNoMap); return; }
     apView.classList.add("open"); apOpen = true;
     if(!apMap) apInitMap(); else apMap.invalidateSize();
     apPoll();
@@ -720,7 +762,7 @@
   async function apLoadGeo(){
     let fc;
     try{ const r = await fetch(AP.dataUrl, { cache:"force-cache" }); if(!r.ok) throw 0; fc = await r.json(); }
-    catch(e){ AS.setNotice("Flughafendaten nicht geladen (airport-lfsb.json fehlt?)"); return; }
+    catch(e){ AS.setNotice(T.apNoGeo); return; }
     const R = L.canvas({ pane:"apGround", padding:.3 });
     const feats = fc.features || [], by = pred => feats.filter(pred), aw = f => f.properties.aeroway || "";
     L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "apron") },
@@ -813,8 +855,8 @@
         }
       }
       let g = 0, a = 0; for(const hex in apAc) apOnGround(apAc[hex].ac) ? g++ : a++;
-      $("ap-stat").innerHTML = `Boden <b>${g}</b>, Luft <b>${a}</b>, ${new Date(now).toLocaleTimeString("de-DE")}`;
-    }catch(e){ $("ap-stat").textContent = "Keine Daten (" + e.message + ")"; }
+      $("ap-stat").innerHTML = `${esc(T.apGround)} <b>${g}</b>, ${esc(T.apAir)} <b>${a}</b>, ${new Date(now).toLocaleTimeString(AS.LANG === "de" ? "de-DE" : "en-GB")}`;
+    }catch(e){ $("ap-stat").textContent = T.apNoData + " (" + e.message + ")"; }
     finally{ apFetching = false; }
   }
   function apStyleMarker(e){
@@ -856,7 +898,7 @@
       airline ? `<div>${esc(airline)}</div>` : "",
       `<div class="mut">${esc([type, ac.r].filter(Boolean).join(", "))}</div>`,
       `<div class="mut">${esc(apFmtAlt(ac.alt_baro))}${typeof ac.gs === "number" ? ", " + Math.round(ac.gs) + " kt" : ""}</div>`,
-      `<div class="rt" id="ap-rt-${esc(hex)}">${cs ? "Route …" : ""}</div>`
+      `<div class="rt" id="ap-rt-${esc(hex)}">${cs ? T.apRoute : ""}</div>`
     ].join("");
     L.popup({ closeButton:true, autoPan:true, offset:[0, -6] }).setLatLng(e.marker.getLatLng()).setContent(html).openOn(apMap);
     if(!cs) return;
@@ -866,14 +908,11 @@
     const el = document.getElementById("ap-rt-" + hex); if(!el) return;
     const rt = j && j.route;
     el.textContent = rt && j.plausible !== false && rt.orig && rt.dest
-      ? `${rt.orig.iata || rt.orig.icao} → ${rt.dest.iata || rt.dest.icao}` : "Route unbekannt";
+      ? `${rt.orig.iata || rt.orig.icao} → ${rt.dest.iata || rt.dest.icao}` : T.apRouteNone;
   }
 
   /* ============ Start ============ */
-  $("ownerThemeSeg").addEventListener("click", e => {
-    const b = e.target.closest("button"); if(b) setTheme(b.dataset.theme);
-  });
-  setTheme(AS.LS.get("ownerTheme", "airspace"));
+  try{ localStorage.removeItem("asl_ownerTheme"); }catch(e){}   // Altlast des früheren Darstellungs-Umschalters
   initSources();
   initFavs();
   if(AS.LS.get("ownerView3d", false)) setView3d(true);

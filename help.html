@@ -15,8 +15,8 @@
     @font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:700;font-display:swap;
       src:url('fonts/barlow-semi-condensed-700.woff2') format('woff2')}
     :root{
-      --bg:#0F1B2D; --surface:#16263D; --line:#2A3D57;
-      --txt:#D3DCE8; --txt-dim:#8193AB; --sel:#D9A441;
+      --bg:#12161c; --surface:#1a1f27; --line:#2a323d;
+      --txt:#c3ccd6; --txt-dim:#97a2af; --sel:#4a9fd4;
       --font:'Barlow Semi Condensed',system-ui,-apple-system,'Segoe UI',sans-serif;
     }
     *{box-sizing:border-box}
@@ -69,76 +69,69 @@
     <a href="#details">Details</a>
     <a href="#ueberflug">Über dir</a>
     <a href="#wetter">Flughafenwetter</a>
-    <a href="#bedienung">Suche und Umkreis</a>
+    <a href="#bedienung">Suche und Einstellungen</a>
     <a href="#standort">Standort</a>
     <a href="#installieren">Installieren</a>
     <a href="#fragen">Häufige Fragen</a>
   </nav>
 
   <h2 id="radar">Das Radarbild</h2>
-  <p>Du bist das kleine Kreuz in der Mitte. Norden ist immer oben. Die Ringe teilen den eingestellten Umkreis in fünf gleiche Abschnitte; die Zahlen an den Ringen geben die Entfernung in nautischen Meilen an (1 NM = 1,852 km).</p>
-  <p>Die Karte im Hintergrund ist maßstabsgetreu: Der Außenring liegt genau auf der eingestellten Entfernung. Dazu zeigt das Radar die Namen der größten Orte ab 10.000 Einwohnern, je nach Platz bis zu zwölf. Mit dem Schalter „Karte im Hintergrund“ blendest du sie aus, etwa um Datenvolumen zu sparen.</p>
+  <p>Oben wechselst du zwischen „Radar“ und „Liste“. Im Radar bist du der blaue Punkt in der Mitte, Norden ist oben. Die Ringe teilen den eingestellten Umkreis in vier gleiche Abschnitte; die Zahlen an den Ringen geben die Entfernung in nautischen Meilen an (1 NM = 1,852 km).</p>
+  <p>Die Karte im Hintergrund ist maßstabsgetreu: Der Außenring liegt genau auf der eingestellten Entfernung. Dazu zeigt das Radar die Namen der größten Orte ab 10.000 Einwohnern, je nach Platz bis zu zwölf. In den Einstellungen (Zahnrad unter dem Radar) blendest du sie mit „Hintergrundkarte“ aus, etwa um Datenvolumen zu sparen.</p>
 
   <div class="legend">
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="17" y="11" width="6" height="6" fill="#E8EEF5"/><line x1="20" y1="14" x2="52" y2="6" stroke="#E8EEF5" stroke-width="1.2"/></svg>
-    <span>Ein Flugzeug. Die Linie zeigt, wo es in einer Minute sein wird. Je länger sie ist, desto schneller fliegt es.</span>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><path d="M7 0L-4.2 -3.5L-2.1 0L-4.2 3.5Z" fill="#cdd6e0" fill-opacity="1" transform="translate(20 14) rotate(-30)"/></svg>
+    <span>Ein Flugzeug. Der Pfeil zeigt in die Richtung, in die es fliegt.</span>
 
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="4" cy="20" r="1.4" fill="rgba(232,238,245,.25)"/><circle cx="10" cy="18.5" r="1.4" fill="rgba(232,238,245,.4)"/><circle cx="16" cy="17" r="1.4" fill="rgba(232,238,245,.6)"/><rect x="21" y="12" width="6" height="6" fill="#E8EEF5"/></svg>
-    <span>Die Punkte dahinter sind die letzten gemeldeten Positionen. So erkennst du, ob ein Flugzeug geradeaus fliegt oder eine Kurve dreht.</span>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><path d="M6 0L-3.6 -3.0L-1.8 0L-3.6 3.0Z" fill="#6f7d8c" fill-opacity="1" transform="translate(8 14) rotate(0)"/><path d="M6 0L-3.6 -3.0L-1.8 0L-3.6 3.0Z" fill="#8a97a5" fill-opacity="1" transform="translate(24 14) rotate(0)"/><path d="M6 0L-3.6 -3.0L-1.8 0L-3.6 3.0Z" fill="#a9b4c0" fill-opacity="1" transform="translate(40 14) rotate(0)"/><path d="M6 0L-3.6 -3.0L-1.8 0L-3.6 3.0Z" fill="#cdd6e0" fill-opacity="1" transform="translate(56 14) rotate(0)"/></svg>
+    <span>Die Helligkeit zeigt die Höhe in vier Stufen: unter 5.000 Fuß dunkel, bis 15.000 Fuß, bis 30.000 Fuß, darüber hell.</span>
 
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="6" y="11" width="6" height="6" fill="rgba(232,238,245,.42)"/><rect x="29" y="11" width="6" height="6" fill="rgba(232,238,245,.7)"/><rect x="52" y="11" width="6" height="6" fill="#E8EEF5"/></svg>
-    <span>Die Helligkeit zeigt die Höhe in drei Stufen: unter 10.000 Fuß gedämpft, bis 25.000 Fuß mittel, darüber hell.</span>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><path d="M7 0L-4.2 -3.5L-2.1 0L-4.2 3.5Z" fill="#d98a3d" fill-opacity="1" transform="translate(20 14) rotate(-30)"/></svg>
+    <span>Ein Flugzeug am Boden, etwa beim Rollen.</span>
 
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="20" y="11" width="8" height="8" fill="#D9A441"/></svg>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><path d="M9 0L-5.4 -4.5L-2.7 0L-5.4 4.5Z" fill="#4a9fd4" fill-opacity="1" transform="translate(20 14) rotate(-30)"/></svg>
     <span>Das Flugzeug, das du gerade angetippt hast.</span>
   </div>
 
   <h3>Beschriftung</h3>
-  <p>Neben einem Flugzeug steht auf Wunsch ein kleiner Datenblock:</p>
-  <ul>
-    <li>obere Zeile: das Callsign, also die Flugnummer im Funkverkehr, z. B. DLH4AB für einen Lufthansa-Flug. Fehlt es, steht dort die Hex-Kennung des Transponders.</li>
-    <li>untere Zeile: die Flugfläche und die Geschwindigkeit über Grund in Knoten. FL360 bedeutet 36.000 Fuß, GND heißt, das Flugzeug steht oder rollt am Boden.</li>
-  </ul>
-  <p>Mit dem Schalter „Beschriftung für alle Flugzeuge“ blendest du die Datenblöcke für alle ein. Ist er aus, siehst du nur den Block des ausgewählten Flugzeugs.</p>
+  <p>Neben jedem Flugzeug steht sein Callsign, also die Flugnummer im Funkverkehr, z. B. DLH4AB für einen Lufthansa-Flug. Fehlt es, steht dort die Hex-Kennung des Transponders. Wo es eng wird, lässt das Radar einzelne Beschriftungen weg, statt sie übereinander zu schreiben.</p>
+  <p>Mit dem Schalter „Alle Flugzeuge beschriften“ in den Einstellungen blendest du die Beschriftungen aus; dann bleibt nur die des ausgewählten Flugzeugs.</p>
 
   <h2 id="liste">Die Flugzeugliste</h2>
-  <p>Unter dem Suchfeld stehen alle Flugzeuge im gewählten Umkreis als Liste, das nächste zuoberst. Die Spalten zeigen das Callsign, die Airline, die Route mit Abflug- und Zielflughafen, die Höhe als Flugfläche (FL340 sind rund 34.000 Fuß), die Entfernung von dir in nautischen Meilen (NM) und die Geschwindigkeit über Grund in Knoten (kt).</p>
-  <p>Das Suchfeld filtert auch die Liste. Tippe auf eine Zeile, um die Details zu öffnen. Die Route erscheint erst nach einem Moment, weil die App sie für jedes Flugzeug einzeln abfragt. Passt eine Route nicht zur Position des Flugzeugs, bleibt die Spalte leer (siehe Details).</p>
+  <p>Unter „Liste“ stehen alle Flugzeuge im gewählten Umkreis, das nächste zuoberst. Die Spalten zeigen den Flug (das Callsign), die Fluglinie, die Route mit Abflug- und Zielflughafen, die Höhe als Flugfläche (FL340 sind rund 34.000 Fuß), die Entfernung von dir in nautischen Meilen (NM) und die Geschwindigkeit über Grund in Knoten (kt).</p>
+  <p>Über der Liste steht das Suchfeld; es filtert auch die Liste. Tippe auf eine Zeile, um die Details zu öffnen. Die Route erscheint erst nach einem Moment, weil die App sie für jedes Flugzeug einzeln abfragt. Passt eine Route nicht zur Position des Flugzeugs, bleibt die Spalte leer (siehe Details).</p>
 
   <h2 id="details">Details zu einem Flugzeug</h2>
   <p>Tippe auf ein Flugzeug, um die Details zu öffnen. Oben siehst du ein Satellitenbild, das dem Flugzeug folgt. Das Symbol in der Mitte zeigt die Art des Luftfahrzeugs, wie sie das Flugzeug selbst meldet: Verkehrsflugzeug, Großraumflugzeug, Kleinflugzeug, Hubschrauber, Segelflugzeug, Militärjet, Ballon oder Drohne. Meldet es keine Art, erscheint das Symbol für ein Verkehrsflugzeug. Zwischen zwei Positionsmeldungen rechnet die App die Position aus Kurs und Geschwindigkeit weiter, damit sich das Bild gleichmäßig bewegt. Wenn verfügbar, erscheinen außerdem ein Foto des Flugzeugs, Abflug- und Zielflughafen, Muster, Kennzeichen und Höhe.</p>
   <p>Routenangaben stammen aus Datenbanken, die einem Callsign eine Strecke zuordnen. Gerade Charter-Airlines verwenden Callsigns aber für wechselnde Strecken, sodass die Datenbank veraltet sein kann. Die App prüft deshalb, ob das Flugzeug überhaupt in der Nähe der genannten Strecke fliegt. Passt es nicht, steht dort „Route unklar“ statt einer falschen Route.</p>
 
   <h2 id="ueberflug">Was gleich über dich hinwegfliegt</h2>
-  <p>In der Zeile unter der Überschrift zeigt die App, welches Flugzeug in den nächsten drei Minuten am nächsten an dir vorbeikommt, zum Beispiel:</p>
-  <p>„Über dir in 1:25 · O · 64° · 1,7 km · DLH4AB A320“</p>
+  <p>Ganz oben zeigt die Karte „Über dir“, welches Flugzeug in den nächsten drei Minuten am nächsten an dir vorbeikommt:</p>
   <ul>
-    <li>„in 1:25“: die Zeit bis zum Moment, in dem das Flugzeug dir am nächsten ist, in Schritten von fünf Sekunden. Ist es so weit, steht dort „jetzt“.</li>
-    <li>„O“: die Himmelsrichtung, in der du es dann findest, in 16 Stufen von N über NNO und NO bis NNW.</li>
-    <li>„64°“: wie hoch du schauen musst. 0° ist der Horizont, 90° senkrecht über dir.</li>
-    <li>„1,7 km“: die Entfernung in direkter Linie zum Flugzeug, die Flughöhe eingerechnet.</li>
-    <li>Am Ende stehen Callsign und Muster.</li>
+    <li>links groß die Zeit bis zum Moment, in dem das Flugzeug dir am nächsten ist, in Schritten von fünf Sekunden. Ist es so weit, steht dort „jetzt“.</li>
+    <li>rechts das Callsign, darunter Fluglinie und Route, sofern bekannt.</li>
+    <li>in der letzten Zeile Flughöhe, Geschwindigkeit und die Entfernung in direkter Linie, die Flughöhe eingerechnet, mit der Himmelsrichtung, in der du es dann findest.</li>
   </ul>
   <p>Berücksichtigt werden Flugzeuge, die in direkter Linie höchstens 20 km entfernt vorbeikommen, die Flughöhe eingerechnet, und dabei mindestens 15° über dem Horizont stehen. Kommen mehrere in Frage, zeigt die App das nächste. Trifft das auf keines zu, steht dort „Kein Überflug in den nächsten 3 Minuten“. Die Vorhersage berücksichtigt auch Flugzeuge, die noch außerhalb des eingestellten Umkreises sind.</p>
-  <p>Tippe auf die Zeile, um die Details des Flugzeugs zu öffnen. Im Radar führt eine gestrichelte Linie vom Flugzeug zu dem Punkt, an dem es dir am nächsten kommt.</p>
+  <p>Tippe auf die Karte, um die Details des Flugzeugs zu öffnen. Im Radar führt eine gestrichelte Linie vom Flugzeug zu dem Punkt, an dem es dir am nächsten kommt.</p>
   <div class="legend">
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><rect x="5" y="11" width="6" height="6" fill="#E8EEF5"/><line x1="8" y1="14" x2="48" y2="14" stroke="rgba(211,220,232,.6)" stroke-width="1" stroke-dasharray="4 4"/><circle cx="52" cy="14" r="3.5" fill="none" stroke="rgba(211,220,232,.6)" stroke-width="1"/></svg>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><path d="M7 0L-4.2 -3.5L-2.1 0L-4.2 3.5Z" fill="#4a9fd4" fill-opacity="1" transform="translate(8 14) rotate(0)"/><line x1="12" y1="14" x2="48" y2="14" stroke="#4a9fd4" stroke-width="1.3" stroke-dasharray="4 4"/><circle cx="52" cy="14" r="3.5" fill="none" stroke="#4a9fd4" stroke-width="1.3"/></svg>
     <span>Der Weg bis zur größten Annäherung; der Kreis markiert den Punkt.</span>
   </div>
   <p>Die App rechnet Kurs, Geschwindigkeit, Kurven sowie Steig- und Sinkflug weiter. Fliegt das Flugzeug gerade eine Kurve oder steigt oder sinkt es stark, wie oft in der Nähe von Flughäfen, ist die Vorhersage unsicherer; dann steht „ca.“ vor der Zeit. Ob das Flugzeug tatsächlich zu sehen ist, etwa bei Wolken oder Dunkelheit, kann die App nicht wissen.</p>
   <p class="note">Die Höhe deines Standorts nimmt die App aus dem GPS, wenn das Gerät sie genau genug kennt, sonst geht sie von Meereshöhe aus. Bei tief fliegenden Flugzeugen kann der Winkel dann etwas zu groß sein. Während du ein Flugzeug weltweit verfolgst, ist die Vorhersage ausgeschaltet.</p>
 
   <h2 id="wetter">Flughafenwetter</h2>
-  <p>Mit dem Schalter „Flughäfen mit Wetter“ zeigt das Radar die Flughäfen im Umkreis, die eine aktuelle Wettermeldung senden. Diese Meldungen heißen METAR, entstehen meist alle halbe Stunde und gelten für den Flughafen selbst, nicht für die ganze Umgebung. Kleinere Flugplätze ohne eigene Meldung erscheinen deshalb nicht.</p>
+  <p>Mit dem Schalter „Flughafenwetter“ in den Einstellungen zeigt das Radar die Flughäfen im Umkreis, die eine aktuelle Wettermeldung senden. Diese Meldungen heißen METAR, entstehen meist alle halbe Stunde und gelten für den Flughafen selbst, nicht für die ganze Umgebung. Kleinere Flugplätze ohne eigene Meldung erscheinen deshalb nicht.</p>
 
   <div class="legend">
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="rgba(129,147,171,.9)" stroke-width="1.4"/><text x="28" y="18" font-size="11" fill="rgba(129,147,171,.9)" font-family="inherit">EDSB</text></svg>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="#97a2af" stroke-width="1.4"/><text x="28" y="18" font-size="11" fill="#97a2af" font-family="inherit">EDSB</text></svg>
     <span>Ein Flughafen mit Wettermeldung und seiner vierstelligen ICAO-Kennung.</span>
 
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="#D9A441" stroke-width="1.4"/></svg>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="#d98a3d" stroke-width="1.4"/></svg>
     <span>Eingeschränkte Sicht oder tiefe Wolken, sodass dort nach Instrumentenflugregeln geflogen wird (IFR oder LIFR).</span>
 
-    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="#D9A441" stroke-width="1.4"/><circle cx="20" cy="14" r="1.6" fill="#D9A441"/></svg>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true"><circle cx="20" cy="14" r="4.5" fill="none" stroke="#d98a3d" stroke-width="1.4"/><circle cx="20" cy="14" r="1.6" fill="#d98a3d"/></svg>
     <span>Gewitter, Gewitterwolken oder anderes gefährliches Wetter, etwa Hagel oder gefrierender Regen. Solche Bereiche umfliegen Flugzeuge meist.</span>
   </div>
 
@@ -154,13 +147,13 @@
   </ul>
   <p>Die Zeiten stehen in UTC, der Weltzeit der Luftfahrt; in Deutschland ist es im Sommer zwei Stunden, im Winter eine Stunde später. Ist eine Meldung älter als 75 Minuten, steht der Hinweis „möglicherweise veraltet“ dabei. Ganz unten findest du die Meldung im Original.</p>
 
-  <h2 id="bedienung">Suche und Umkreis</h2>
-  <p>Das Suchfeld filtert nach Callsign oder Hex-Kennung. Es genügt ein Teil, z. B. „EZY“ für alle easyJet-Flüge. Treffer bleiben hell, alle anderen Flugzeuge werden gedimmt.</p>
+  <h2 id="bedienung">Suche, Umkreis und Einstellungen</h2>
+  <p>Unter dem Radar liegt eine Leiste mit Knöpfen. Links wählst du den Umkreis zwischen 10 und 160 NM. Kleine Werte eignen sich, um Flugzeuge über dir zu erkennen, große Werte zeigen den Verkehr einer ganzen Region. Rechts öffnet die Lupe das Suchfeld, das Zahnrad die Einstellungen mit Hintergrundkarte, Flughafenwetter und Beschriftung.</p>
+  <p>Das Suchfeld filtert nach Callsign oder Hex-Kennung. Es genügt ein Teil, z. B. „EZY“ für alle easyJet-Flüge. Treffer bleiben hell, alle anderen Flugzeuge werden gedimmt. In der Liste steht das Suchfeld immer über den Flugzeugen.</p>
   <h3 id="weltweit">Flugzeuge weltweit finden</h3>
   <p>Gibt es im Umkreis keinen Treffer, sucht die App nach dem Drücken von <kbd>Enter</kbd> bzw. „Suchen“ auf der Tastatur weltweit. Dafür braucht es das vollständige Callsign oder die Flugnummer; Teile genügen hier nicht.</p>
   <p>Callsign und Flugnummer sind nicht dasselbe: Im Funkverkehr nutzen Airlines ein dreibuchstabiges Kürzel (HVN10 für Vietnam Airlines), auf Tickets steht das zweistellige (VN10). Die App versteht beides. Das klappt aber nur bei Airlines, deren Callsign der Flugnummer entspricht. Viele Airlines, etwa easyJet oder Ryanair, verwenden eigene Buchstaben-Zahlen-Kombinationen; dort hilft nur das Callsign, das z. B. Flugtracking-Seiten anzeigen.</p>
   <p>Wird das Flugzeug gefunden, springt das Radar zu ihm und zeigt nur noch dieses eine Flugzeug in der Mitte, die Karte zieht mit. Oben steht, wie weit es von dir entfernt ist. Mit „Zurück zu meinem Standort“ kehrst du zum normalen Radar zurück. Verschwindet das Flugzeug aus dem Empfang, etwa nach der Landung, bleibt der letzte bekannte Stand stehen.</p>
-  <p>Den Umkreis wählst du zwischen 5 und 100 NM. Kleine Werte eignen sich, um Flugzeuge über dir zu erkennen, große Werte zeigen den Verkehr einer ganzen Region.</p>
 
   <h2 id="standort">Standort freigeben</h2>
   <p>Ohne deinen Standort weiß die App nicht, wo die Mitte des Radars ist. Wenn oben „Standort ist nicht freigegeben“ steht, hast du die Abfrage abgelehnt. So erlaubst du sie nachträglich:</p>
