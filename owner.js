@@ -471,7 +471,7 @@
     me.rotation.x = -Math.PI/2; me.position.y = .1; v3.ground.add(me);
     v3.fixed = [];
     [.25, .5, .75].forEach(f => { const [x, z] = v3Polar(135, R*f); v3.fixed.push({ t:`${Math.round(radiusNm*f)}`, v:new THREE.Vector3(x,0,z), c:"v3-ring" }); });
-    [["N",0],["O",90],["S",180],["W",270]].forEach(([t, a]) => { const [x, z] = v3Polar(a, GR*1.04); v3.fixed.push({ t, v:new THREE.Vector3(x,0,z), c:"v3-dir" }); });
+    [["N",0],[AS.LANG === "de" ? "O" : "E",90],["S",180],["W",270]].forEach(([t, a]) => { const [x, z] = v3Polar(a, GR*1.04); v3.fixed.push({ t, v:new THREE.Vector3(x,0,z), c:"v3-dir" }); });
     for(let ft = 10000; ft <= 40000; ft += 10000) v3.fixed.push({ t:`FL${ft/100}`, v:new THREE.Vector3(axX, ft*V3_FT_KM*v3.exag, axZ), c:"v3-alt" });
   }
 
