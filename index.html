@@ -738,20 +738,21 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .clock{flex:none;color:var(--txt-dim);font-size:13px;font-family:var(--font-data);
     min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:flex-end}
   /* Karte „Über dir“: Countdown groß, Flug rechts daneben */
-  .ovcard{display:flex;align-items:stretch;gap:14px;padding:12px 14px;margin:0 0 10px;
+  .ovcard{display:flex;align-items:stretch;gap:12px;padding:12px 14px;margin:0 0 10px;
     background:var(--surface);border:1px solid var(--line);border-radius:8px}
   .ovcard[hidden]{display:none}
   .ovcard[role="button"]{cursor:pointer}
   .ovcard[role="button"]:hover{border-color:#3a4552}
-  .ov-when{display:flex;flex-direction:column;justify-content:center;gap:2px;padding-right:14px;
-    border-right:1px solid var(--line);flex:none;min-width:84px}
-  .ov-lbl{font-family:var(--font-data);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--txt-dim)}
+  .ov-when{display:flex;flex-direction:column;justify-content:center;gap:2px;padding-right:12px;
+    border-right:1px solid var(--line);flex:none;min-width:76px}
+  .ov-lbl{font-family:var(--font-data);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--txt-dim);white-space:nowrap}
   .ov-time{font-weight:600;font-size:40px;line-height:1;color:var(--txt-hi)}
   .ov-info{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
   .ov-info>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ov-cs{font-family:var(--font-data);font-weight:600;font-size:17px;color:var(--sel)}
-  .ov-sub{font-size:16px;color:var(--txt)}
-  .ov-data{font-family:var(--font-data);font-size:12px;color:var(--txt-dim)}
+  .ov-info>.ov-sub{font-size:16px;line-height:1.25;color:var(--txt);white-space:normal;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
+  .ov-data{font-family:var(--font-data);font-size:11.5px;color:var(--txt-dim)}
   .ovcard.none .ov-time{font-size:28px;color:var(--txt-dim)}
   .ovcard.none .ov-sub{color:var(--txt-dim)}
   .listmode .ovcard{padding:8px 12px;align-items:center}
@@ -1167,7 +1168,7 @@ const TXT = {
     mapCredit:"Karte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende; Orte: GeoNames",
     searchPh:"Callsign suchen, auch weltweit", rangeLbl:"Umkreis in NM",
     tabRadar:"Radar", tabList:"Liste", viewAria:"Ansicht", settings:"Einstellungen", display:"Anzeige",
-    ovIn:"Über dir in", ovNone:"Über dir", routeTo:(a,b)=>`${a} nach ${b}`, nmUnit:"NM",
+    ovIn:"Über dir in", ovNone:"Über dir", routeTo:(a,b)=>`${a} nach ${b}`, nmUnit:"NM", ovHigh:"hoch",
     tLabels:"Alle Flugzeuge beschriften", tMap:"Hintergrundkarte", tMetar:"Flughafenwetter",
     lhCs:"Flug", lhAl:"Fluglinie", lhRt:"Route", lhFl:"Höhe", lhNm:"NM", lhKt:"kt",
     listEmpty:"Gerade keine Flugzeuge im Umkreis.", listMatchEmpty:"Kein Treffer im Umkreis.",
@@ -1220,7 +1221,7 @@ const TXT = {
     mapCredit:"Map: Esri, HERE, Garmin, © OpenStreetMap contributors; places: GeoNames",
     searchPh:"Search callsign, worldwide", rangeLbl:"Radius in NM",
     tabRadar:"Radar", tabList:"List", viewAria:"View", settings:"Settings", display:"Display",
-    ovIn:"Overhead in", ovNone:"Overhead", routeTo:(a,b)=>`${a} to ${b}`, nmUnit:"NM",
+    ovIn:"Overhead in", ovNone:"Overhead", routeTo:(a,b)=>`${a} to ${b}`, nmUnit:"NM", ovHigh:"up",
     tLabels:"Label all aircraft", tMap:"Background map", tMetar:"Airport weather",
     lhCs:"Flight", lhAl:"Airline", lhRt:"Route", lhFl:"Alt", lhNm:"NM", lhKt:"kt",
     listEmpty:"No aircraft nearby right now.", listMatchEmpty:"No match nearby.",
@@ -1412,25 +1413,24 @@ function placesNear(lat,lon,nm){
   return out;
 }
 
-function drawPlaces(c,R,toXY,font){
+function drawPlaces(c,R,toXY,avoid){
   const cand=placesNear(state.center.lat,state.center.lon,state.radius)
     .map(pl=>{ const [x,y,d]=toXY(pl.lat,pl.lon); return {...pl,x,y,d}; })
     .filter(pl=>pl.d<=state.radius*0.96)
     .sort((a,b)=>b.p-a.p);
-  const boxes=[[c-7,c-7,14,14]];              // eigene Position frei halten
-  for(const i of [1,3,5]){                    // Ringbeschriftungen frei halten
-    const a=toRad(-45); boxes.push([c+Math.cos(a)*R*i/5+2, c+Math.sin(a)*R*i/5-14, 26, 16]);
-  }
+  // Frei halten: eigene Position, Ringzahlen, Himmelsrichtungen, Flugzeuge und ihre Beschriftungen
+  const boxes=[[c-10,c-10,20,20], ...avoid.map(o=>[o.x,o.y,o.w,o.h])];
+  const font=getComputedStyle(document.body).fontFamily;
   const hit=(b)=>boxes.some(o=>b[0]<o[0]+o[2]+6 && b[0]+b[2]+6>o[0] && b[1]<o[1]+o[3]+4 && b[1]+b[3]+4>o[1]);
   const inCircle=(b)=>[[b[0],b[1]],[b[0]+b[2],b[1]],[b[0],b[1]+b[3]],[b[0]+b[2],b[1]+b[3]]]
     .every(([px,py])=>Math.hypot(px-c,py-c)<=R-2);
   let shown=0;
   ctx.textBaseline="middle"; ctx.lineJoin="round";
   for(const pl of cand){
-    if(shown>=12) break;
+    if(shown>=8) break;
     const big=pl.p>=100;
-    ctx.font=`${big?600:400} ${big?13:12}px ${font}`;
-    const w=ctx.measureText(pl.n).width, h=14;
+    ctx.font=`${big?12:11}px ${font}`;
+    const w=ctx.measureText(pl.n).width, h=13;
     // Positionen der Reihe nach probieren: rechts, links, darüber, darunter
     // (die weiter entfernten Varianten greifen, wenn der Ort unter dem eigenen Standortkreuz liegt)
     const opts=[[pl.x+5,pl.y-h/2],[pl.x-5-w,pl.y-h/2],[pl.x-w/2,pl.y-h-4],[pl.x-w/2,pl.y+4],
@@ -1438,12 +1438,12 @@ function drawPlaces(c,R,toXY,font){
     const box=opts.map(([bx,by])=>[bx,by,w,h]).find(b=>inCircle(b)&&!hit(b));
     if(!box) continue;
     boxes.push(box, [pl.x-3,pl.y-3,6,6]);
-    ctx.fillStyle="rgba(151,162,175,.8)";
-    ctx.beginPath(); ctx.arc(pl.x,pl.y,1.8,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="rgba(120,130,142,.7)";
+    ctx.beginPath(); ctx.arc(pl.x,pl.y,1.5,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle=COL.bg; ctx.lineWidth=3; ctx.textAlign="left";
     const ty=box[1]+h/2;
     ctx.strokeText(pl.n,box[0],ty);
-    ctx.fillStyle=big?"rgba(195,204,214,.8)":"rgba(151,162,175,.75)";
+    ctx.fillStyle=big?"rgba(151,162,175,.75)":"rgba(120,130,142,.7)";
     ctx.fillText(pl.n,box[0],ty);
     shown++;
   }
@@ -1487,7 +1487,7 @@ function drawRadar(){
   const bm=$("bgmap"), rot=hdg ? `rotate(${-hdg}deg)` : "";
   if(bm.style.transform!==rot) bm.style.transform=rot;   // der Kreisausschnitt bleibt dabei gefüllt
 
-  drawFrame(c,R,font,state.bgmap,hdg);
+  const frameBoxes=drawFrame(c,R,font,state.bgmap,hdg);
   // Zusatzringe (Owner: Alarmradius), gestrichelt
   for(const ring of AS.rings){
     if(ring.nm>state.radius) continue;
@@ -1503,7 +1503,29 @@ function drawRadar(){
     return [c+Math.cos(b)*d*pxPerNm, c+Math.sin(b)*d*pxPerNm, d];
   };
 
-  if(state.bgmap){ loadPlaces(); drawPlaces(c,R,toXY,font); }
+  // Flugzeuge im Kreis bestimmen (Anzeigeposition zwischen den Meldungen aus Kurs und Geschwindigkeit hochgerechnet)
+  const now=performance.now(), ovh=state.overhead, targets=[];
+  for(const a of state.aircraft){
+    if(a.lat==null||a.lon==null) continue;
+    const [plat,plon]=(a.posTs!=null) ? deadReckon({lat:a.lat,lon:a.lon,track:a.track,gs:a.gs,spd:a.spd,hz:a.hz,turn:a.turn,ts:a.posTs}, now) : [a.lat,a.lon];
+    const [x,y,dist]=toXY(plat,plon);
+    if(dist>state.radius) continue;
+    const isSel=!!(state.selected && a.hex===state.selected.hex), isFav=AS.isFav(a);
+    targets.push({a,x,y,dist,isSel,isFav,match:matchesQuery(a),sz:(isSel?9:5.5)+(isFav?4:0)});
+  }
+  // Ausgewähltes Flugzeug zuletzt zeichnen (liegt oben)
+  targets.sort((p,q)=>p.isSel-q.isSel);
+
+  // Beschriftungen planen: Flugzeuge haben Vorrang, Orte weichen ihnen später aus
+  const meBox={x:c-10,y:c-10,w:20,h:20};
+  const symbolBoxes=targets.map(t=>({x:t.x-t.sz,y:t.y-t.sz,w:t.sz*2,h:t.sz*2}));
+  const jobs=targets.filter(t=>t.match && (state.labels || t.isSel || t.isFav || state.track))
+    .map(t=>({label:(t.a.flight||t.a.hex||"").trim(),x:t.x,y:t.y,sz:t.sz,isSel:t.isSel,dist:t.dist,
+              col:t.isFav?COL.fav:altColor(t.a)}))
+    .filter(j=>j.label);
+  const labels=layoutLabels(jobs,R,c,font,[...frameBoxes,meBox,...symbolBoxes]);
+
+  if(state.bgmap){ loadPlaces(); drawPlaces(c,R,toXY,[...frameBoxes,...symbolBoxes,...labels.map(l=>l.r)]); }
 
   // Im Verfolgungsmodus steht das Flugzeug in der Mitte; der Punkt zeigt den eigenen Standort, falls im Bild
   if(!state.track) drawMe(c,c);
@@ -1514,45 +1536,28 @@ function drawRadar(){
 
   if(state.metar) drawAirports(c,R,toXY,font);
 
-  const list=[...state.aircraft];
-  // Ausgewähltes Flugzeug zuletzt zeichnen (liegt oben)
-  list.sort((p,q)=>(state.selected&&p.hex===state.selected.hex)-(state.selected&&q.hex===state.selected.hex));
-
-  const now=performance.now(), ovh=state.overhead, labelJobs=[];
-  for(const a of list){
-    if(a.lat==null||a.lon==null) continue;
-    // Anzeigeposition zwischen den Meldungen aus Kurs und Geschwindigkeit hochrechnen
-    const [plat,plon]=(a.posTs!=null) ? deadReckon({lat:a.lat,lon:a.lon,track:a.track,gs:a.gs,spd:a.spd,hz:a.hz,turn:a.turn,ts:a.posTs}, now) : [a.lat,a.lon];
-    const [x,y,dist]=toXY(plat,plon);
-    if(dist>state.radius) continue;
-    const brg=bearingDeg(state.center.lat,state.center.lon,a.lat,a.lon);
-    const isSel=!!(state.selected && a.hex===state.selected.hex);
-    const isFav=AS.isFav(a);
-    const match=matchesQuery(a);
-
+  for(const t of targets){
+    const a=t.a;
     // Überflug-Vorhersage: gestrichelte Linie bis zum Punkt der größten Annäherung (im Radarkreis)
     if(ovh && !state.track && a.hex===ovh.hex){
       const [px,py]=toXY(ovh.lat,ovh.lon);
       ctx.save();
       ctx.beginPath(); ctx.arc(c,c,R,0,Math.PI*2); ctx.clip();
       ctx.strokeStyle=COL.sel; ctx.globalAlpha=.8; ctx.lineWidth=1.3; ctx.setLineDash([4,4]);
-      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(px,py); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(t.x,t.y); ctx.lineTo(px,py); ctx.stroke();
       ctx.setLineDash([]); ctx.beginPath(); ctx.arc(px,py,3.5,0,Math.PI*2); ctx.stroke();
       ctx.restore();
     }
-
-    const {sz,col}=drawTarget(x,y,a,isSel,match,hdg,isFav);
-    const label=(a.flight||a.hex||"").trim();
-    if(label && match && (state.labels || isSel || isFav || state.track)) labelJobs.push({label,x,y,sz,isSel,col,dist});
-    dotHits.push({x,y,a,dist,brg});
+    drawTarget(t.x,t.y,a,t.isSel,t.match,hdg,t.isFav);
+    dotHits.push({x:t.x,y:t.y,a,dist:t.dist,brg:bearingDeg(state.center.lat,state.center.lon,a.lat,a.lon)});
   }
-  drawLabels(labelJobs,R,c,font);
+  drawLabels(labels,font);
 }
 
 /* ============ Radardarstellung ============ */
-// Pfeile in Kursrichtung, Farbe nach Höhe in vier Stufen, am Boden orange, nur das Callsign als
+// Pfeile in Kursrichtung, Farbe nach Höhe in vier Stufen, am Boden braungrau, nur das Callsign als
 // Beschriftung. Beschriftungen weichen einander aus und entfallen bei Gedränge.
-const ALT_COLORS=["#6f7d8c","#8a97a5","#a9b4c0","#cdd6e0"], GND_COLOR="#d98a3d";
+const ALT_COLORS=["#6f7d8c","#8a97a5","#a9b4c0","#cdd6e0"], GND_COLOR="#9c8a70";   // am Boden: gedämpftes Braungrau
 function altColor(a){
   if(a.alt==="ground" || altFt(a)==null) return GND_COLOR;
   const f=altFt(a);
@@ -1560,6 +1565,7 @@ function altColor(a){
 }
 // Rahmen: vier Ringe mit Entfernung, gestricheltes Achsenkreuz, Himmelsrichtungen
 function drawFrame(c,R,font,onMap,hdg=0){
+  const boxes=[];                       // belegte Flächen: Ringzahlen und Himmelsrichtungen
   [.25,.5,.75,1].forEach((f,i)=>{
     ctx.beginPath(); ctx.arc(c,c,R*f,0,Math.PI*2);
     ctx.strokeStyle=onMap ? (i===3?"rgba(120,160,220,.75)":"rgba(120,160,220,.30)") : (i===3?COL.line:"#1a1f27");
@@ -1573,6 +1579,7 @@ function drawFrame(c,R,font,onMap,hdg=0){
       ctx.fillStyle=onMap ? "rgba(180,205,235,.95)" : "#7c8794";
       ctx.fillText(t,lx,ly+1); ctx.fillText(t,lx,ly+1);
       ctx.shadowBlur=0; ctx.shadowColor="transparent";
+      const tw=ctx.measureText(t).width; boxes.push({x:lx-tw/2-2,y:ly-6,w:tw+4,h:13});
     }
   });
   ctx.strokeStyle=onMap ? "rgba(120,160,220,.25)" : "#1a1f27"; ctx.lineWidth=.6; ctx.setLineDash([3,6]);
@@ -1582,14 +1589,19 @@ function drawFrame(c,R,font,onMap,hdg=0){
   ctx.fillStyle=onMap ? "#9cc0ee" : "#6b7682"; ctx.font=`600 12px ${getComputedStyle(document.body).fontFamily}`;
   ctx.textAlign="center"; ctx.textBaseline="alphabetic";
   const E=LANG==="de" ? "O" : "E";   // Osten heißt auf Deutsch O
-  if(!hdg){ for(const [ch,dx,dy] of [["N",0,-R+13],["S",0,R-3],[E,R-13,4],["W",-R+8,4]]) ctx.fillText(ch,c+dx,c+dy); }
-  else{
+  if(!hdg){
+    for(const [ch,dx,dy] of [["N",0,-R+13],["S",0,R-3],[E,R-13,4],["W",-R+8,4]]){
+      ctx.fillText(ch,c+dx,c+dy); boxes.push({x:c+dx-8,y:c+dy-13,w:16,h:16});
+    }
+  } else{
     ctx.textBaseline="middle";
     for(const [ch,b] of [["N",0],[E,90],["S",180],["W",270]]){
-      const a=toRad(b-hdg-90); ctx.fillText(ch,c+Math.cos(a)*(R-10),c+Math.sin(a)*(R-10));
+      const a=toRad(b-hdg-90), x=c+Math.cos(a)*(R-10), y=c+Math.sin(a)*(R-10);
+      ctx.fillText(ch,x,y); boxes.push({x:x-8,y:y-8,w:16,h:16});
     }
     ctx.textBaseline="alphabetic";
   }
+  return boxes;
 }
 // Eigene Position: blauer Punkt mit Hof
 function drawMe(x,y){
@@ -1599,20 +1611,25 @@ function drawMe(x,y){
 }
 // Flugzeug: Pfeil in Flugrichtung
 function drawTarget(x,y,a,isSel,match,hdg=0,isFav=false){
-  const sz=isSel?9:5.5, col=isFav ? COL.fav : altColor(a);
+  const sz=isSel?9:5.5, col=altColor(a);
   ctx.save(); ctx.translate(x,y); ctx.rotate(((a.track??0)-hdg-90)*Math.PI/180);
   ctx.beginPath(); ctx.moveTo(sz,0); ctx.lineTo(-sz*.6,-sz*.5); ctx.lineTo(-sz*.3,0); ctx.lineTo(-sz*.6,sz*.5); ctx.closePath();
-  ctx.fillStyle=col; ctx.globalAlpha=!match ? .25 : (isSel ? 1 : .8); ctx.fill();
+  ctx.fillStyle=col; ctx.globalAlpha=!match ? .25 : (isSel ? 1 : .85); ctx.fill();
   if(isSel){ ctx.globalAlpha=1; ctx.strokeStyle=COL.sel; ctx.lineWidth=1.5; ctx.stroke(); }
   ctx.restore();
-  return {sz, col};
+  // Favorit (Owner): oranger Ring um den Pfeil; Orange steht nur für das, was einen Alarm auslösen kann
+  if(isFav && match){
+    ctx.beginPath(); ctx.arc(x,y,sz+4,0,Math.PI*2);
+    ctx.strokeStyle=COL.fav; ctx.lineWidth=1.4; ctx.globalAlpha=.95; ctx.stroke(); ctx.globalAlpha=1;
+  }
+  return {sz:isFav?sz+4:sz, col:isFav?COL.fav:col};
 }
-function drawLabels(jobs,R,c,font){
+function layoutLabels(jobs,R,c,font,obstacles){
   // Ausgewähltes zuerst, dann nach Entfernung; bei Gedränge wird ein Label weggelassen statt zu überlappen
   jobs.sort((p,q)=>(q.isSel-p.isSel) || (p.dist-q.dist));
-  const placed=[], pad=2, lineH=12;
-  const overlaps=r=>placed.some(o=>r.x<o.x+o.w+pad && r.x+r.w+pad>o.x && r.y<o.y+o.h+pad && r.y+r.h+pad>o.y);
-  ctx.textBaseline="middle"; ctx.textAlign="left";
+  const placed=[], out=[], pad=2, lineH=12;
+  const free=r=>![...obstacles,...placed].some(o=>r.x<o.x+o.w+pad && r.x+r.w+pad>o.x && r.y<o.y+o.h+pad && r.y+r.h+pad>o.y);
+  const inside=r=>[[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]].every(([px,py])=>Math.hypot(px-c,py-c)<=R-3);
   for(const j of jobs){
     ctx.font=j.isSel ? `600 11px ${font}` : `10px ${font}`;
     const w=ctx.measureText(j.label).width, off=j.sz+3;
@@ -1621,17 +1638,24 @@ function drawLabels(jobs,R,c,font){
     let pick=null;
     for(const [lx,ly] of cands){
       const r={x:lx,y:ly-lineH/2,w,h:lineH};
-      if(Math.hypot(lx+w/2-c, ly-c)>R+14) continue;
-      if(!overlaps(r)){ pick=[lx,ly,r]; break; }
+      if(inside(r) && free(r)){ pick={j,x:lx,y:ly,r}; break; }
     }
-    if(!pick){ if(!j.isSel) continue; pick=[cands[0][0],cands[0][1],{x:cands[0][0],y:cands[0][1]-lineH/2,w,h:lineH}]; }
-    placed.push(pick[2]);
-    ctx.globalAlpha=j.isSel ? 1 : .82;
-    ctx.fillStyle=j.isSel ? "#e6ecf2" : j.col;
-    ctx.fillText(j.label, pick[0], pick[1]);
-    ctx.globalAlpha=1;
+    // Das ausgewählte Flugzeug behält sein Label, solange es irgendwo im Kreis Platz hat
+    if(!pick && j.isSel) for(const [lx,ly] of cands){ const r={x:lx,y:ly-lineH/2,w,h:lineH}; if(inside(r)){ pick={j,x:lx,y:ly,r}; break; } }
+    if(!pick) continue;
+    placed.push(pick.r); out.push(pick);
   }
-  ctx.textBaseline="alphabetic";
+  return out;
+}
+function drawLabels(list,font){
+  ctx.textBaseline="middle"; ctx.textAlign="left";
+  for(const {j,x,y} of list){
+    ctx.font=j.isSel ? `600 11px ${font}` : `10px ${font}`;
+    ctx.globalAlpha=j.isSel ? 1 : .85;
+    ctx.fillStyle=j.isSel ? "#e6ecf2" : j.col;
+    ctx.fillText(j.label, x, y);
+  }
+  ctx.globalAlpha=1; ctx.textBaseline="alphabetic";
 }
 
 /* ============ Datenabruf ============ */
@@ -1860,15 +1884,19 @@ function renderOvCard(o){
     if(!routeFresh(cs)) getRoute(a).then(()=>updateStatus());
     const rt=e && e.j && e.j.plausible!==false && e.j.route;
     if(rt){
-      const f=rt.orig?.city||rt.orig?.iata||rt.orig?.icao, t=rt.dest?.city||rt.dest?.iata||rt.dest?.icao;
-      if(f && t) route=TXT.routeTo(f,t);
+      const fc=rt.orig?.iata||rt.orig?.icao, tc=rt.dest?.iata||rt.dest?.icao;
+      const fn=rt.orig?.city||fc, tn=rt.dest?.city||tc;
+      // Städtenamen, wenn sie zusammen mit der Fluglinie in die Zeile passen, sonst Flughafencodes
+      if(fn && tn) route=TXT.routeTo(fn,tn);
+      if(fc && tc && [airline,route].filter(Boolean).join(", ").length>30) route=`${fc}\u00a0→\u00a0${tc}`;
     }
   }
   const type=o.type ? (NAMES.types[o.type]||o.type) : "";
   $("ovSub").textContent=[airline, route].filter(Boolean).join(", ") || type;
+  // Wo am Himmel: Himmelsrichtung und Höhenwinkel zuerst, dann Flughöhe und Tempo
   const dir=COMPASS16[Math.round(o.az/22.5)%16];
-  $("ovData").textContent=[a?flText(a):"", (a&&a.gs!=null)?Math.round(a.gs)+" kt":"", `${fmtDec(o.slant/1000,1)} km ${dir}`]
-    .filter(Boolean).join("  ·  ");
+  $("ovData").textContent=[`${dir}, ${Math.round(o.elev)}° ${TXT.ovHigh}`, a?flText(a):"", (a&&a.gs!=null)?Math.round(a.gs)+" kt":""]
+    .filter(Boolean).join(" · ");
   card.setAttribute("role","button"); card.tabIndex=0;
   card.setAttribute("aria-label", overheadText(o));
 }

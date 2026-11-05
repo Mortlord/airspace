@@ -341,7 +341,7 @@
                labels:[], queued:false, items:[], fixed:[] };
   const cssVar = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
   function altColor(a){
-    if(a.alt === "ground" || AS.altFt(a) == null) return "#d98a3d";
+    if(a.alt === "ground" || AS.altFt(a) == null) return "#9c8a70";
     const f = AS.altFt(a);
     return f < 5000 ? "#6f7d8c" : f < 15000 ? "#8a97a5" : f < 30000 ? "#a9b4c0" : "#cdd6e0";
   }
@@ -716,7 +716,7 @@
   AS.paused = () => apOpen;
   const apMpp = () => 156543.03392 * Math.cos(apMap.getCenter().lat * Math.PI / 180) / Math.pow(2, apMap.getZoom());
   const apOnGround = ac => ac.alt_baro === "ground" || (typeof ac.gs === "number" && ac.gs < 35 && typeof ac.alt_baro === "number" && ac.alt_baro < 1500);
-  const apAltColor = alt => typeof alt !== "number" ? "#d98a3d" : alt < 5000 ? "#6f7d8c" : alt < 15000 ? "#8a97a5" : alt < 30000 ? "#a9b4c0" : "#cdd6e0";
+  const apAltColor = alt => typeof alt !== "number" ? "#9c8a70" : alt < 5000 ? "#6f7d8c" : alt < 15000 ? "#8a97a5" : alt < 30000 ? "#a9b4c0" : "#cdd6e0";
   const apFmtAlt = alt => alt === "ground" ? T.apGround : typeof alt !== "number" ? "" : alt < 5000 ? `${Math.round(alt / 100) * 100} ft` : `FL${String(Math.round(alt / 100)).padStart(3, "0")}`;
 
   function openAirportView(){
@@ -843,7 +843,7 @@
         const last = e.trail[e.trail.length - 1];
         if(!last || last[0] !== ac.lat || last[1] !== ac.lon) e.trail.push([ac.lat, ac.lon, e.ts]);
         while(e.trail.length && now - e.trail[0][2] > AP_TRAIL_MS) e.trail.shift();
-        const ll = e.trail.map(q => [q[0], q[1]]), color = apOnGround(ac) ? "#d98a3d" : "#4a9fd4";
+        const ll = e.trail.map(q => [q[0], q[1]]), color = apOnGround(ac) ? "#9c8a70" : "#4a9fd4";
         if(!e.line) e.line = L.polyline(ll, { pane:"apTrail", interactive:false, weight:1.5, opacity:.45, color }).addTo(apMap);
         else { e.line.setLatLngs(ll); e.line.setStyle({ color }); }
         apStyleMarker(e);
@@ -869,7 +869,7 @@
     w.style.width = w.style.height = px + "px"; w.style.transform = `translate(${-px / 2}px, ${-px / 2}px)`;
     svg.setAttribute("width", px); svg.setAttribute("height", px); svg.style.transform = `rotate(${hdg}deg)`;
     const path = svg.firstChild;
-    path.setAttribute("fill", ground ? "#d98a3d" : apAltColor(ac.alt_baro));
+    path.setAttribute("fill", ground ? "#9c8a70" : apAltColor(ac.alt_baro));
     path.setAttribute("stroke", "#0a0d12"); path.setAttribute("stroke-width", "3");
     lbl.style.left = (px * .75) + "px"; lbl.style.top = (px * .15) + "px";
     const cs = (ac.flight || "").trim() || ac.r || ac.hex.toUpperCase();
