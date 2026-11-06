@@ -907,8 +907,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .satwrap{position:relative;width:100%;height:230px;border-radius:6px;overflow:hidden;
     border:1px solid var(--line);margin:8px 0 4px}
   .satmap{position:absolute;inset:0;background:#0f1318}
-  /* Kacheln minimal überlappen: verhindert Haarlinien beim Mitziehen der Karte */
-  .satmap .leaflet-tile-container img{width:256.5px!important;height:256.5px!important}
   .satmap .leaflet-control-attribution{font-family:var(--font);font-size:10px;
     background:rgba(18,22,28,.8);color:var(--txt-dim)}
   .satmap .leaflet-control-attribution a{color:var(--txt-dim)}
@@ -935,6 +933,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 0}
   .fact{display:flex;flex-direction:column;gap:2px;padding:8px 10px;background:var(--bg);border-radius:6px;min-width:0}
   .fact .k{font-family:var(--font-data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt-dim)}
+  .fact.wide{grid-column:1/-1}
   .fact .v{font-family:var(--font-data);font-size:15px;color:var(--txt-hi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sheet-actions{position:absolute;top:8px;right:56px;display:flex;gap:6px;z-index:2}
   .sheet-actions:empty{display:none}
@@ -1107,7 +1106,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 <script>
 /* ============ Konfiguration ============ */
-const APP_VERSION = "2.1";   // bei jeder Auslieferung erhöhen
+const APP_VERSION = "2.2";   // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";
 const LS = {
   get:(k,d)=>{try{const v=localStorage.getItem("asl_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -1149,8 +1148,8 @@ const TXT = {
     unknown:"Unbekannt",
     routeDoubt:(f,t)=>`Route unklar. Die Datenbank nennt ${f} nach ${t}, das passt aber nicht zur aktuellen Position.`,
     onGround:"am Boden",
-    fType:"Muster", fReg:"Kennzeichen", fAlt:"Flughöhe", fSpeed:"Geschwindigkeit", fTrack:"Kurs",
-    fDist:"Entfernung", fBrg:"Richtung", fTrend:"Trend", fElev:"Platzhöhe",
+    fType:"Muster", fReg:"Kennzeichen", fAlt:"Flughöhe", fSpeed:"Geschwindigkeit", fTrack:"Flugrichtung",
+    fDist:"Entfernung", fBrg:"Von dir aus", fTrend:"Trend", fElev:"Platzhöhe",
     photo:"Foto",
     flightDetails:"Flugdetails", airportWeather:"Flughafenwetter",
     report:(utc,age,old)=>`Meldung von ${utc} UTC, ${age}${old?", möglicherweise veraltet":""}`,
@@ -1204,8 +1203,8 @@ const TXT = {
     unknown:"Unknown",
     routeDoubt:(f,t)=>`Route unclear. The database says ${f} to ${t}, but that does not match the current position.`,
     onGround:"on ground",
-    fType:"Type", fReg:"Registration", fAlt:"Altitude", fSpeed:"Ground speed", fTrack:"Track",
-    fDist:"Distance", fBrg:"Bearing", fTrend:"Trend", fElev:"Elevation",
+    fType:"Type", fReg:"Registration", fAlt:"Altitude", fSpeed:"Ground speed", fTrack:"Flying towards",
+    fDist:"Distance", fBrg:"Direction from you", fTrend:"Trend", fElev:"Elevation",
     photo:"Photo",
     flightDetails:"Flight details", airportWeather:"Airport weather",
     report:(utc,age,old)=>`Report from ${utc} UTC, ${age}${old?", possibly outdated":""}`,
@@ -1293,6 +1292,8 @@ const OV_MAX_TURN  = 90;     // Grad; eine erkannte Kurve wird höchstens so wei
 const OV_SWITCH    = 0.8;    // neuer Kandidat muss 20 % näher kommen, sonst bleibt der bisherige
 const EARTH_R = 6371000, FT = 0.3048;
 const COMPASS16 = TXT.compass;
+// Richtung als Himmelsrichtung mit Gradzahl, z. B. „SO (122°)“
+const dirText = d => `${COMPASS16[Math.round((((d%360)+360)%360)/22.5)%16]} (${Math.round(((d%360)+360)%360)}°)`;
 
 let state = {
   radius: normRadius(LS.get("radius",40)),
@@ -2139,7 +2140,7 @@ function satStep(){
   const [lat,lon]=deadReckon(satTarget, now+SAT_STEP_MS);
   satMap.panTo([lat,lon],{animate:true, duration:SAT_STEP_MS/1000, easeLinearity:1, noMoveStart:true});
   const [clat,clon]=deadReckon(satTarget, now);
-  $("satCoords").textContent=`${clat.toFixed(2).replace(".",",")}° ${clat>=0?'N':'S'}  ${clon.toFixed(2).replace(".",",")}° ${clon>=0?'O':'W'}`;
+  $("satCoords").textContent=`${fmtDec(Math.abs(clat),2)}° ${clat>=0?"N":"S"}  ${fmtDec(Math.abs(clon),2)}° ${clon>=0?(LANG==="de"?"O":"E"):"W"}`;
 }
 
 function startSatAnim(){
@@ -2541,12 +2542,13 @@ function renderSheet(a){
     [TXT.fReg, a.reg],
     [TXT.fAlt, altText(a)],
     [TXT.fSpeed, a.gs!=null ? Math.round(a.gs)+" kt" : null],
-    [TXT.fTrack, a.track!=null ? Math.round(a.track)+"°" : null],
+    [TXT.fTrack, a.track!=null ? dirText(a.track) : null],
     [TXT.fDist, sheetDist!=null ? fmtDec(sheetDist,1)+" NM" : null],
-    [TXT.fBrg, sheetBrg!=null ? Math.round(sheetBrg)+"°" : null],
+    [TXT.fBrg, sheetBrg!=null ? dirText(sheetBrg) : null],
     ["Hex", a.hex ? a.hex.toUpperCase() : null]
   ].filter(r=>r[1]!=null && r[1]!=="");
-  html+=`<div class="facts">${rows.map(([k,v])=>`<div class="fact"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>`).join("")}</div>`;
+  // Das Muster ist oft lang (z. B. „Boeing 777-300ER“) und bekommt die ganze Breite
+  html+=`<div class="facts">${rows.map(([k,v])=>`<div class="fact${k===TXT.fType?" wide":""}"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>`).join("")}</div>`;
   $("sheetBody").innerHTML=html;
   AS.onSheet(a);
 }
