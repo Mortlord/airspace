@@ -5,7 +5,7 @@
 
    Eingebaut in die gemeinsame Oberfläche statt angehängt:
    - Kopfzeile: Wähler für die Datenquelle (Standort, Heim-Pi, Fixpunkt)
-   - Werkzeugleiste: 3D-Ansicht, Regenradar (nur Heim-Pi), Flughafen Basel-Mulhouse
+   - Werkzeugleiste: 3D-Ansicht, Regenradar (nur Heim-Pi), Flughafen Stuttgart
    - Detailblatt: Stern für Favoriten
    - Einstellungen: Kompass (iPhone, Standort) und der Block „Nur für dich“
      mit Favoriten, Empfangsreichweite (coverage.html) und Abmelden
@@ -34,10 +34,10 @@
          coverage:"Empfangsreichweite in 3D", logout:"Abmelden", logoutAsk:"Owner-Bereich auf diesem Gerät abmelden?",
          compass:"Kompass", compassSub:"Radar folgt der Blickrichtung", compassOn:"Radar folgt der Blickrichtung", compassOff:"Ausrichtung: Norden oben",
          compassDenied:"Kompass-Zugriff abgelehnt", compassNA:"Kompass nicht verfügbar",
-         t3d:"3D-Ansicht", tRain:"Regenradar", tAirport:"Flughafen Basel-Mulhouse",
+         t3d:"3D-Ansicht", tRain:"Regenradar", tAirport:"Flughafen Stuttgart",
          rainCredit:t=>`Regenradar: Deutscher Wetterdienst, ${t} Uhr`, v3fail:"Die 3D-Ansicht konnte nicht geladen werden (three.min.js fehlt?).",
          apLoading:"Lade …", apApron:"Vorfeld", apArea:"Umgebung", apClose:"Schließen", apGround:"Boden", apAir:"Luft", apNoData:"Keine Daten",
-         apNoMap:"Karte nicht verfügbar", apNoGeo:"Flughafendaten nicht geladen (airport-lfsb.json fehlt?)", apRoute:"Route …", apRouteNone:"Route unbekannt" },
+         apNoMap:"Karte nicht verfügbar", apNoGeo:"Flughafendaten nicht geladen (airport-edds.json fehlt?)", apRoute:"Route …", apRouteNone:"Route unbekannt" },
     en:{ src:"Data source", live:"Location", liveSub:"GPS of this device", feeder:"Home Pi", feederSub:"Own receiver",
          fix:"Fixed point", fixSub:"Fixed position", off:"not reachable", denied:"The server rejected the owner code. Tap the clock five times to sign in again.",
          mine:"Only for you", favs:"Favourites", favPh:"+ prefix", favAdd:"Add favourite", favNote:`Telegram reports favourites within ${ALERT_NM} NM of your location.`,
@@ -47,10 +47,10 @@
          coverage:"Reception range in 3D", logout:"Sign out", logoutAsk:"Sign out of the owner area on this device?",
          compass:"Compass", compassSub:"Radar follows your heading", compassOn:"Radar follows your heading", compassOff:"Orientation: north up",
          compassDenied:"Compass access denied", compassNA:"Compass not available",
-         t3d:"3D view", tRain:"Rain radar", tAirport:"Basel-Mulhouse airport",
+         t3d:"3D view", tRain:"Rain radar", tAirport:"Stuttgart airport",
          rainCredit:t=>`Rain radar: Deutscher Wetterdienst, ${t}`, v3fail:"The 3D view could not be loaded (three.min.js missing?).",
          apLoading:"Loading …", apApron:"Apron", apArea:"Area", apClose:"Close", apGround:"Ground", apAir:"Air", apNoData:"No data",
-         apNoMap:"Map not available", apNoGeo:"Airport data not loaded (airport-lfsb.json missing?)", apRoute:"Route …", apRouteNone:"Route unknown" }
+         apNoMap:"Map not available", apNoGeo:"Airport data not loaded (airport-edds.json missing?)", apRoute:"Route …", apRouteNone:"Route unknown" }
   }[AS.LANG];
 
   /* ============ Stile für die Owner-Bausteine ============ */
@@ -654,11 +654,14 @@
     applyWx();
   }
 
-  /* ============ Stufe 8: Flughafenansicht Basel-Mulhouse (LFSB) ============ */
-  // Vollbildkarte mit Vorfeld, Rollwegen, Pisten und Gebäuden aus OpenStreetMap (airport-lfsb.json im Repo,
-  // © OpenStreetMap-Mitwirkende, ODbL). Flugzeuge über /aircraft um LFSB, am Boden maßstäblich.
+  /* ============ Stufe 8: Flughafenansicht ============ */
+  // Vollbildkarte mit Vorfeld, Rollwegen, Pisten und Gebäuden aus OpenStreetMap (Datei im Repo,
+  // © OpenStreetMap-Mitwirkende, ODbL). Flugzeuge über /aircraft um den Flughafen, am Boden maßstäblich.
+  // Stuttgart statt Basel-Mulhouse, weil adsb.fi dort auch Bodenverkehr gut empfängt. Für einen anderen
+  // Flughafen genügt es, AP anzupassen und die passende Datei aus Overpass Turbo abzulegen.
   // Solange die Ansicht offen ist, pausiert der Abruf des Hauptradars.
-  const AP = { lat:47.5996, lon:7.5290, dataUrl:"airport-lfsb.json" };
+  const AP = { icao:"EDDS", name:"Stuttgart", lat:48.6900, lon:9.2219, dataUrl:"airport-edds.json",
+               apron:null };   // Bereich des Vorfelds, wird aus den Flughafendaten bestimmt
   const AP_POLL_MS = 2000, AP_STALE_S = 60, AP_TRAIL_MS = 3 * 60 * 1000, AP_TAXI_WIDTH = 23;
   const AP_SPAN = { A1:12, A2:20, A3:36, A4:40, A5:62, A7:12, B1:15, B4:10 };
   const AP_PLANE = "M0,-48C4,-48 5,-40 5,-30L5,-10L46,8L46,15L5,6L4,30L16,40L16,46L0,42L-16,46L-16,40L-4,30L-5,6L-46,15L-46,8L-5,-10L-5,-30C-5,-40 -4,-48 0,-48Z";
@@ -703,8 +706,8 @@
     #ap-map a.leaflet-popup-close-button{color:var(--txt-dim)}`;
   document.head.appendChild(apCss);
   const apView = document.createElement("div");
-  apView.id = "ap-view"; apView.setAttribute("role", "dialog"); apView.setAttribute("aria-label", "Flughafen Basel-Mulhouse");
-  apView.innerHTML = `<div id="ap-head"><div class="ap-title">Basel-Mulhouse<span>LFSB</span></div>
+  apView.id = "ap-view"; apView.setAttribute("role", "dialog"); apView.setAttribute("aria-label", T.tAirport);
+  apView.innerHTML = `<div id="ap-head"><div class="ap-title">${esc(AP.name)}<span>${esc(AP.icao)}</span></div>
       <div class="ap-stat" id="ap-stat">${esc(T.apLoading)}</div><div class="ap-sp"></div>
       <button data-ap="apron">${esc(T.apApron)}</button><button data-ap="area">${esc(T.apArea)}</button>
       <button class="ap-close" data-ap="close" aria-label="${esc(T.apClose)}">×</button></div><div id="ap-map"></div>`;
@@ -736,13 +739,16 @@
   apView.querySelector("#ap-head").addEventListener("click", e => {
     const b = e.target.closest("button[data-ap]"); if(!b) return;
     if(b.dataset.ap === "close") closeAirportView();
-    else if(b.dataset.ap === "apron") apMap.flyTo([47.5985, 7.5265], 16, { duration:.8 });
+    else if(b.dataset.ap === "apron"){
+      if(AP.apron) apMap.flyToBounds(AP.apron, { padding:[16, 16], duration:.8 });
+      else apMap.flyTo([AP.lat, AP.lon], 15, { duration:.8 });
+    }
     else apMap.flyTo([AP.lat, AP.lon], 11, { duration:.8 });
   });
   document.addEventListener("keydown", e => { if(apOpen && e.key === "Escape") closeAirportView(); });
 
   function apInitMap(){
-    apMap = L.map("ap-map", { zoomControl:false, zoomSnap:.25, minZoom:8, maxZoom:19 }).setView([47.5985, 7.5265], 15.5);
+    apMap = L.map("ap-map", { zoomControl:false, zoomSnap:.25, minZoom:8, maxZoom:19 }).setView([AP.lat, AP.lon], 14.5);
     apMap.attributionControl.setPrefix(false);
     apMap.attributionControl.addAttribution('© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende, Kacheln © Esri');
     apMap.createPane("apScrim").style.zIndex = 250;
@@ -765,8 +771,13 @@
     catch(e){ AS.setNotice(T.apNoGeo); return; }
     const R = L.canvas({ pane:"apGround", padding:.3 });
     const feats = fc.features || [], by = pred => feats.filter(pred), aw = f => f.properties.aeroway || "";
-    L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "apron") },
+    const apronLayer = L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "apron") },
       { renderer:R, interactive:false, style:{ stroke:false, fillColor:"#1d242d", fillOpacity:1 } }).addTo(apMap);
+    // Startansicht: das Vorfeld bildschirmfüllend
+    if(apronLayer.getLayers().length){
+      AP.apron = apronLayer.getBounds();
+      apMap.fitBounds(AP.apron, { padding:[16, 16] });
+    }
     const taxi = by(f => (aw(f) === "taxiway" || aw(f) === "taxilane") && f.geometry.type === "LineString");
     for(const f of taxi){
       const body = L.polyline(f.geometry.coordinates.map(c => [c[1], c[0]]),

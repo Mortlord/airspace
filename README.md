@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **2.3** (steht unten rechts in der App).
+Aktuelle Version: **2.4** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -25,7 +25,7 @@ Zusatzfunktionen nur für den Betreiber, in `owner.js`. Die Datei wird nur gelad
 
 - **Datenquelle** oben neben dem Namen: Standort (GPS), Heim-Pi (eigener Empfänger) oder Fixpunkt. Im Heim-Pi- und Fixpunkt-Modus markiert ein Kreuz die Mitte, der blaue Punkt bleibt der eigene Standort.
 - **Favoriten** mit Telegram-Alarm im Umkreis von 20 NM um den eigenen Standort: per Stern im Detailblatt oder als Präfix in den Einstellungen. Favoriten tragen im Radar einen orangen Ring, der Alarmradius ist ein orange gestrichelter Kreis um den Standort. Die Liste wird vor jedem Speichern frisch vom Server geholt, damit nichts überschrieben wird.
-- **Werkzeugleiste:** 3D-Ansicht, Regenradar des DWD (nur Heim-Pi), Flughafenansicht Basel-Mulhouse (LFSB) mit Vorfeld, Rollwegen und Pisten.
+- **Werkzeugleiste:** 3D-Ansicht, Regenradar des DWD (nur Heim-Pi), Flughafenansicht Stuttgart (EDDS) mit Vorfeld, Rollwegen und Pisten; dort empfängt adsb.fi auch den Bodenverkehr gut.
 - **Einstellungen:** Kompass (iPhone, Standort-Modus; Radar und Karte drehen mit der Blickrichtung), Link zur 3D-Empfangsreichweite des Heim-Pi (`coverage.html`), Abmelden.
 
 ## Dateien
@@ -35,7 +35,7 @@ index.html             App (Leaflet, Icons und Manifest sind eingebettet)
 owner.js               Owner-Bereich, nur mit Owner-Code geladen
 coverage.html          3D-Empfangsreichweite des Heim-Pi (Owner)
 three.min.js           three.js r128 für 3D-Ansicht und Empfangsreichweite (MIT)
-airport-lfsb.json      Flughafen Basel-Mulhouse aus OpenStreetMap (ODbL) für die Flughafenansicht
+airport-edds.json      Flughafen Stuttgart aus OpenStreetMap (ODbL) für die Flughafenansicht
 help.html, help-en.html     Hilfe
 legal.html, legal-en.html   Impressum und Datenschutz (die deutsche Fassung ist verbindlich)
 sw.js                  Abschalt-Service-Worker für Altbesucher der früheren öffentlichen App
@@ -60,12 +60,30 @@ Nach dem Hochladen kann GitHub Pages bis zu zehn Minuten die alte Fassung auslie
 
 > **Die Standortabfrage braucht HTTPS.** Über GitHub Pages funktioniert sie, beim Öffnen der Datei direkt vom Rechner (`file://`) nicht. Zum lokalen Testen genügt ein kleiner Webserver, z. B. `python3 -m http.server`, und der Aufruf über `http://localhost:8000`.
 
+### Flughafendaten erzeugen
+
+Die Datei `airport-edds.json` entsteht in [Overpass Turbo](https://overpass-turbo.eu) mit dieser Abfrage und *Export → GeoJSON → herunterladen*:
+
+```
+[out:json][timeout:60];
+nwr["aeroway"="aerodrome"]["icao"="EDDS"];
+map_to_area->.ap;
+(
+  way["aeroway"](area.ap);
+  node["aeroway"="gate"](area.ap);
+  way["building"](area.ap);
+);
+out geom;
+```
+
+Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am Anfang der Flughafenansicht in `owner.js` anpassen.
+
 ## Konfiguration
 
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "2.3";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "2.4";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 
