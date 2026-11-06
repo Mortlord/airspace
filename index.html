@@ -1106,7 +1106,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 <script>
 /* ============ Konfiguration ============ */
-const APP_VERSION = "2.2";   // bei jeder Auslieferung erhöhen
+const APP_VERSION = "2.3";   // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";
 const LS = {
   get:(k,d)=>{try{const v=localStorage.getItem("asl_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -1424,39 +1424,62 @@ function placesNear(lat,lon,nm){
   return out;
 }
 
-function drawPlaces(c,R,toXY,avoid){
+let placeLayout={key:"", items:[]};   // feste Auswahl: [{pl, opt, big, w}]
+const placeHidden=new Map();          // Ortsname -> ausgeblendet bis (ms)
+const PLACE_HIDE_MS=4000;
+function layoutPlaces(c,R,toXY,staticBoxes,font){
   const cand=placesNear(state.center.lat,state.center.lon,state.radius)
-    .map(pl=>{ const [x,y,d]=toXY(pl.lat,pl.lon); return {...pl,x,y,d}; })
-    .filter(pl=>pl.d<=state.radius*0.96)
-    .sort((a,b)=>b.p-a.p);
-  // Frei halten: eigene Position, Ringzahlen, Himmelsrichtungen, Flugzeuge und ihre Beschriftungen
-  const boxes=[[c-10,c-10,20,20], ...avoid.map(o=>[o.x,o.y,o.w,o.h])];
-  const font=getComputedStyle(document.body).fontFamily;
-  const hit=(b)=>boxes.some(o=>b[0]<o[0]+o[2]+6 && b[0]+b[2]+6>o[0] && b[1]<o[1]+o[3]+4 && b[1]+b[3]+4>o[1]);
-  const inCircle=(b)=>[[b[0],b[1]],[b[0]+b[2],b[1]],[b[0],b[1]+b[3]],[b[0]+b[2],b[1]+b[3]]]
+    .map(pl=>{ const [x,y,d]=toXY(pl.lat,pl.lon); return {pl,x,y,d}; })
+    .filter(o=>o.d<=state.radius*0.96)
+    .sort((a,b)=>b.pl.p-a.pl.p);
+  const boxes=staticBoxes.map(o=>[o.x,o.y,o.w,o.h]);
+  const hit=b=>boxes.some(o=>b[0]<o[0]+o[2]+6 && b[0]+b[2]+6>o[0] && b[1]<o[1]+o[3]+4 && b[1]+b[3]+4>o[1]);
+  const inCircle=b=>[[b[0],b[1]],[b[0]+b[2],b[1]],[b[0],b[1]+b[3]],[b[0]+b[2],b[1]+b[3]]]
     .every(([px,py])=>Math.hypot(px-c,py-c)<=R-2);
-  let shown=0;
-  ctx.textBaseline="middle"; ctx.lineJoin="round";
-  for(const pl of cand){
-    if(shown>=8) break;
-    const big=pl.p>=100;
+  const items=[];
+  for(const o of cand){
+    if(items.length>=8) break;
+    const big=o.pl.p>=100;
     ctx.font=`${big?12:11}px ${font}`;
-    const w=ctx.measureText(pl.n).width, h=13;
-    // Positionen der Reihe nach probieren: rechts, links, darüber, darunter
-    // (die weiter entfernten Varianten greifen, wenn der Ort unter dem eigenen Standortkreuz liegt)
-    const opts=[[pl.x+5,pl.y-h/2],[pl.x-5-w,pl.y-h/2],[pl.x-w/2,pl.y-h-4],[pl.x-w/2,pl.y+4],
-                [pl.x-w/2,pl.y+14],[pl.x+16,pl.y-h/2]];
-    const box=opts.map(([bx,by])=>[bx,by,w,h]).find(b=>inCircle(b)&&!hit(b));
-    if(!box) continue;
-    boxes.push(box, [pl.x-3,pl.y-3,6,6]);
+    const w=ctx.measureText(o.pl.n).width;
+    const opt=placeOpts(o.x,o.y,w).findIndex(b=>inCircle(b)&&!hit(b));
+    if(opt<0) continue;
+    boxes.push(placeOpts(o.x,o.y,w)[opt], [o.x-3,o.y-3,6,6]);
+    items.push({pl:o.pl,opt,big,w});
+  }
+  return items;
+}
+// Mögliche Lagen des Namens: rechts, links, darüber, darunter, weiter weg (falls der Ort unter der Mitte liegt)
+function placeOpts(x,y,w){
+  const h=13;
+  return [[x+5,y-h/2],[x-5-w,y-h/2],[x-w/2,y-h-4],[x-w/2,y+4],[x-w/2,y+14],[x+16,y-h/2]].map(([bx,by])=>[bx,by,w,h]);
+}
+function drawPlaces(c,R,toXY,staticBoxes,dynamicBoxes,hdg){
+  const font=getComputedStyle(document.body).fontFamily;
+  // Neu auswählen nur, wenn sich das Bild wirklich ändert: Umkreis, Größe, Ausrichtung oder ein
+  // spürbarer Sprung des Mittelpunkts (mehr als 2 % des Umkreises)
+  const grid=state.radius*0.02/60;
+  const key=[state.radius, Math.round(cssSize), Math.round(hdg/5),
+             Math.round(state.center.lat/grid), Math.round(state.center.lon/grid), places?places.size:0].join("|");
+  if(key!==placeLayout.key){ placeLayout={key, items:layoutPlaces(c,R,toXY,staticBoxes,font)}; }
+  const now=Date.now();
+  const dyn=dynamicBoxes.map(o=>[o.x,o.y,o.w,o.h]);
+  const covered=b=>dyn.some(o=>b[0]<o[0]+o[2]+3 && b[0]+b[2]+3>o[0] && b[1]<o[1]+o[3]+2 && b[1]+b[3]+2>o[1]);
+  ctx.textBaseline="middle"; ctx.lineJoin="round"; ctx.textAlign="left";
+  for(const it of placeLayout.items){
+    const [x,y]=toXY(it.pl.lat,it.pl.lon);
+    const box=placeOpts(x,y,it.w)[it.opt];
+    // Liegt ein Flugzeug oder seine Beschriftung darauf, ausblenden und erst nach einer Pause wieder zeigen
+    if(covered(box) || covered([x-3,y-3,6,6])) placeHidden.set(it.pl.n, now+PLACE_HIDE_MS);
+    if((placeHidden.get(it.pl.n)||0)>now) continue;
+    ctx.font=`${it.big?12:11}px ${font}`;
     ctx.fillStyle="rgba(120,130,142,.7)";
-    ctx.beginPath(); ctx.arc(pl.x,pl.y,1.5,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle="rgba(18,22,28,.45)"; ctx.lineWidth=2.5; ctx.textAlign="left";
-    const ty=box[1]+h/2;
-    ctx.strokeText(pl.n,box[0],ty);
-    ctx.fillStyle=big?"rgba(151,162,175,.75)":"rgba(120,130,142,.7)";
-    ctx.fillText(pl.n,box[0],ty);
-    shown++;
+    ctx.beginPath(); ctx.arc(x,y,1.5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="rgba(18,22,28,.45)"; ctx.lineWidth=2.5;
+    const ty=box[1]+box[3]/2;
+    ctx.strokeText(it.pl.n,box[0],ty);
+    ctx.fillStyle=it.big?"rgba(151,162,175,.75)":"rgba(120,130,142,.7)";
+    ctx.fillText(it.pl.n,box[0],ty);
   }
 }
 
@@ -1535,12 +1558,12 @@ function drawRadar(){
   const meBox={x:c-10,y:c-10,w:20,h:20};
   const symbolBoxes=targets.map(t=>({x:t.x-t.sz,y:t.y-t.sz,w:t.sz*2,h:t.sz*2}));
   const jobs=targets.filter(t=>t.match && (state.labels || t.isSel || t.isFav || state.track))
-    .map(t=>({label:(t.a.flight||t.a.hex||"").trim(),x:t.x,y:t.y,sz:t.sz,isSel:t.isSel,dist:t.dist,
+    .map(t=>({hex:t.a.hex,label:(t.a.flight||t.a.hex||"").trim(),x:t.x,y:t.y,sz:t.sz,isSel:t.isSel,dist:t.dist,
               col:t.isFav?COL.fav:altColor(t.a)}))
     .filter(j=>j.label);
   const labels=layoutLabels(jobs,R,c,font,[...frameBoxes,meBox,...symbolBoxes]);
 
-  if(state.bgmap){ loadPlaces(); drawPlaces(c,R,toXY,[...frameBoxes,...symbolBoxes,...labels.map(l=>l.r)]); }
+  if(state.bgmap){ loadPlaces(); drawPlaces(c,R,toXY,[...frameBoxes,meBox],[...symbolBoxes,...labels.map(l=>l.r)],hdg); }
 
   // Der blaue Punkt ist immer der eigene Standort. In der Mitte steht er nur, wenn das Radar um dich zentriert ist;
   // beim Verfolgen, beim Heim-Pi und beim Fixpunkt markiert ein kleines Kreuz die Mitte
@@ -1644,9 +1667,14 @@ function drawTarget(x,y,a,isSel,match,hdg=0,isFav=false){
   }
   return {sz:isFav?sz+4:sz, col:isFav?COL.fav:col};
 }
+const labelMemo=new Map();   // hex -> {opt, rank}: zuletzt gewählte Lage und feste Rangfolge
+let labelRank=0;
 function layoutLabels(jobs,R,c,font,obstacles){
-  // Ausgewähltes zuerst, dann nach Entfernung; bei Gedränge wird ein Label weggelassen statt zu überlappen
-  jobs.sort((p,q)=>(q.isSel-p.isSel) || (p.dist-q.dist));
+  // Reihenfolge: ausgewähltes Flugzeug, dann alle, die schon eine Beschriftung hatten (in fester
+  // Reihenfolge), dann neue nach Entfernung. So kippt die Verteilung nicht bei jeder Bewegung.
+  const memo=j=>labelMemo.get(j.hex);
+  jobs.sort((p,q)=>(q.isSel-p.isSel) || (!!memo(q)-!!memo(p)) ||
+    (memo(p)&&memo(q) ? memo(p).rank-memo(q).rank : p.dist-q.dist));
   const placed=[], out=[], pad=2, lineH=12;
   const free=r=>![...obstacles,...placed].some(o=>r.x<o.x+o.w+pad && r.x+r.w+pad>o.x && r.y<o.y+o.h+pad && r.y+r.h+pad>o.y);
   const inside=r=>[[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]].every(([px,py])=>Math.hypot(px-c,py-c)<=R-3);
@@ -1655,16 +1683,22 @@ function layoutLabels(jobs,R,c,font,obstacles){
     const w=ctx.measureText(j.label).width, off=j.sz+3;
     const cands=[[j.x+off,j.y],[j.x-off-w,j.y],[j.x-w/2,j.y-off-8],[j.x-w/2,j.y+off+8],
                  [j.x+off,j.y-off-4],[j.x-off-w,j.y+off+4],[j.x+off,j.y+off+4],[j.x-off-w,j.y-off-4]];
+    // Zuerst die bisherige Lage versuchen; gewechselt wird nur, wenn sie blockiert ist
+    const prev=memo(j), order=prev ? [prev.opt, ...cands.keys()].filter((v,i,a)=>a.indexOf(v)===i) : [...cands.keys()];
     let pick=null;
-    for(const [lx,ly] of cands){
-      const r={x:lx,y:ly-lineH/2,w,h:lineH};
-      if(inside(r) && free(r)){ pick={j,x:lx,y:ly,r}; break; }
+    for(const k of order){
+      const [lx,ly]=cands[k], r={x:lx,y:ly-lineH/2,w,h:lineH};
+      if(inside(r) && free(r)){ pick={j,x:lx,y:ly,r,k}; break; }
     }
     // Das ausgewählte Flugzeug behält sein Label, solange es irgendwo im Kreis Platz hat
-    if(!pick && j.isSel) for(const [lx,ly] of cands){ const r={x:lx,y:ly-lineH/2,w,h:lineH}; if(inside(r)){ pick={j,x:lx,y:ly,r}; break; } }
-    if(!pick) continue;
+    if(!pick && j.isSel) for(const k of order){ const [lx,ly]=cands[k], r={x:lx,y:ly-lineH/2,w,h:lineH}; if(inside(r)){ pick={j,x:lx,y:ly,r,k}; break; } }
+    if(!pick){ labelMemo.delete(j.hex); continue; }
+    labelMemo.set(j.hex, {opt:pick.k, rank: prev ? prev.rank : ++labelRank});
     placed.push(pick.r); out.push(pick);
   }
+  // Gedächtnis aufräumen: Flugzeuge, die nicht mehr beschriftet werden, vergessen
+  const now=new Set(jobs.map(j=>j.hex));
+  for(const h of labelMemo.keys()) if(!now.has(h)) labelMemo.delete(h);
   return out;
 }
 function drawLabels(list,font){
