@@ -1106,7 +1106,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 <script>
 /* ============ Konfiguration ============ */
-const APP_VERSION = "2.4";   // bei jeder Auslieferung erhöhen
+const APP_VERSION = "2.6";   // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";
 const LS = {
   get:(k,d)=>{try{const v=localStorage.getItem("asl_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -1325,13 +1325,20 @@ function normRadius(r){
   return R.reduce((b,x)=>Math.abs(x-r)<Math.abs(b-r)?x:b, 40);
 }
 
+// Bodenfahrzeug? Die Typdatenbank führt sie als „GND“, ADS-B kennt die Kategorien C1 bis C3,
+// und viele Fahrzeugsender haben keine echte ICAO-Adresse (Kennung beginnt mit „~“)
+function isVehicle(a){
+  const t=String(a.type??a.t??"").toUpperCase(), cat=String(a.cat??a.category??"").toUpperCase(), hex=String(a.hex||"");
+  return t==="GND" || /^C[123]$/.test(cat) || hex.startsWith("~");
+}
+
 /* ============ Andockstellen für owner.js ============ */
 // Gäste laden owner.js nie; dann gelten die Standardwerte unten und AirSpace verhält sich ohne Owner-Funktionen.
 const AS = {
   // Zustand und Werkzeuge, die owner.js liest oder aufruft
   get state(){ return state; },
   BASE, LS, LANG, $, esc,
-  haversineNm, bearingDeg, altFt, flText, getRoute, get names(){ return NAMES; },
+  haversineNm, bearingDeg, altFt, flText, getRoute, isVehicle, get names(){ return NAMES; },
   requestDraw, renderList, fetchData, setNotice,
   fetchRadius(){ return Math.max(state.radius, OV_FETCH_NM)+1; },
   get bgMap(){ if(window.L) initBgMap(); return bgMap; },
@@ -1809,7 +1816,8 @@ async function fetchData(){
     // Server-Quellen liefern ac[], der Heim-Pi (Feeder) aircraft[]
     const raw=Array.isArray(j.ac) ? j.ac : (AS.source && Array.isArray(j.aircraft) ? j.aircraft : null);
     if(!raw) throw new Error("malformed response"); // kein gültiges Datenpaket -> alte Daten behalten
-    let list=raw.map(normalizeRaw);
+    // Bodenfahrzeuge (Follow-me, Schlepper usw.) sind keine Flugzeuge: weder im Radar noch in der Liste
+    let list=raw.map(normalizeRaw).filter(a=>!isVehicle(a));
     // Der Feeder führt Flugzeuge noch Minuten nach der letzten Position; alte Positionen nicht zeigen
     if(AS.source && !state.track) list=list.filter(a=>a.seenPos==null || a.seenPos<=60);
 

@@ -36,7 +36,11 @@
          compassDenied:"Kompass-Zugriff abgelehnt", compassNA:"Kompass nicht verfügbar",
          t3d:"3D-Ansicht", tRain:"Regenradar", tAirport:"Flughafen Stuttgart",
          rainCredit:t=>`Regenradar: Deutscher Wetterdienst, ${t} Uhr`, v3fail:"Die 3D-Ansicht konnte nicht geladen werden (three.min.js fehlt?).",
-         apLoading:"Lade …", apApron:"Vorfeld", apArea:"Umgebung", apClose:"Schließen", apGround:"Boden", apAir:"Luft", apNoData:"Keine Daten",
+         apLoading:"Lade …", apApron:"Vorfeld", apArea:"Umgebung", apClose:"Schließen", apGround:"Boden", apAir:"Luft", apVeh:"Fahrzeuge", apVehicle:"Bodenfahrzeug", apNoData:"Keine Daten",
+         apHex:"Kennung", apCat:"Kategorie", apNoIcao:"keine ICAO-Adresse",
+         cats:{A1:"leichtes Flugzeug",A2:"kleines Flugzeug",A3:"großes Flugzeug",A4:"Boeing 757",A5:"schweres Flugzeug",A6:"Hochleistungsflugzeug",
+               A7:"Hubschrauber",B1:"Segelflugzeug",B2:"Ballon",B3:"Fallschirmspringer",B4:"Ultraleicht",B6:"Drohne",B7:"Raumfahrzeug",
+               C1:"Einsatzfahrzeug",C2:"Servicefahrzeug",C3:"Hindernis"},
          apNoMap:"Karte nicht verfügbar", apNoGeo:"Flughafendaten nicht geladen (airport-edds.json fehlt?)", apRoute:"Route …", apRouteNone:"Route unbekannt" },
     en:{ src:"Data source", live:"Location", liveSub:"GPS of this device", feeder:"Home Pi", feederSub:"Own receiver",
          fix:"Fixed point", fixSub:"Fixed position", off:"not reachable", denied:"The server rejected the owner code. Tap the clock five times to sign in again.",
@@ -49,7 +53,11 @@
          compassDenied:"Compass access denied", compassNA:"Compass not available",
          t3d:"3D view", tRain:"Rain radar", tAirport:"Stuttgart airport",
          rainCredit:t=>`Rain radar: Deutscher Wetterdienst, ${t}`, v3fail:"The 3D view could not be loaded (three.min.js missing?).",
-         apLoading:"Loading …", apApron:"Apron", apArea:"Area", apClose:"Close", apGround:"Ground", apAir:"Air", apNoData:"No data",
+         apLoading:"Loading …", apApron:"Apron", apArea:"Area", apClose:"Close", apGround:"Ground", apAir:"Air", apVeh:"Vehicles", apVehicle:"Ground vehicle", apNoData:"No data",
+         apHex:"Hex", apCat:"Category", apNoIcao:"no ICAO address",
+         cats:{A1:"light aircraft",A2:"small aircraft",A3:"large aircraft",A4:"Boeing 757",A5:"heavy aircraft",A6:"high performance",
+               A7:"helicopter",B1:"glider",B2:"balloon",B3:"parachutist",B4:"ultralight",B6:"drone",B7:"space vehicle",
+               C1:"emergency vehicle",C2:"service vehicle",C3:"obstacle"},
          apNoMap:"Map not available", apNoGeo:"Airport data not loaded (airport-edds.json missing?)", apRoute:"Route …", apRouteNone:"Route unknown" }
   }[AS.LANG];
 
@@ -680,14 +688,18 @@
     #ap-head button{background:var(--bg);border:1px solid var(--line);color:var(--txt-dim);border-radius:4px;
       padding:6px 10px;font:15px var(--font);cursor:pointer}
     #ap-head button.ap-close{font-size:18px;line-height:1;padding:4px 10px}
-    #ap-map{flex:1;background:#0c0f14}
+    #ap-map{flex:1;background:#404042}   /* Grundton der Kacheln: Haarlinien zwischen Kacheln fallen nicht auf */
     #ap-map .leaflet-control-attribution{background:rgba(18,22,28,.8);color:var(--txt-dim);font:10px var(--font)}
     #ap-map .leaflet-control-attribution a{color:inherit}
     .ap-ac{background:none;border:none}
     .ap-ac-wrap{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer}
+    /* Tippfläche mindestens 44 px, auch wenn das Flugzeug bei kleinem Maßstab nur wenige Pixel groß ist */
+    .ap-ac-wrap::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
     .ap-ac-svg{position:absolute;left:0;top:0;overflow:visible}
+    .ap-veh{position:absolute;left:0;top:0;width:10px;height:10px;transform:translate(-5px,-5px);border-radius:2px;
+      background:#6f8796;border:1.5px solid #0a0d12;box-sizing:border-box}
     .ap-ac-lbl{position:absolute;white-space:nowrap;font:10.5px/1.25 var(--font-data);color:var(--txt);
-      text-shadow:0 0 3px #0a0d12,0 0 3px #0a0d12,0 0 2px #0a0d12;pointer-events:none}
+      text-shadow:0 0 3px #0a0d12,0 0 3px #0a0d12,0 0 2px #0a0d12;pointer-events:auto;cursor:pointer}
     .ap-ac-lbl small{display:block;color:var(--txt-dim);font-size:9.5px}
     .ap-txt{background:none;border:none}
     .ap-txt div{transform:translate(-50%,-50%);white-space:nowrap;font-family:var(--font-data);color:var(--txt-dim);
@@ -855,6 +867,7 @@
         if(!last || last[0] !== ac.lat || last[1] !== ac.lon) e.trail.push([ac.lat, ac.lon, e.ts]);
         while(e.trail.length && now - e.trail[0][2] > AP_TRAIL_MS) e.trail.shift();
         const ll = e.trail.map(q => [q[0], q[1]]), color = apOnGround(ac) ? "#9c8a70" : "#4a9fd4";
+        if(AS.isVehicle(ac)){ apStyleMarker(e); continue; }
         if(!e.line) e.line = L.polyline(ll, { pane:"apTrail", interactive:false, weight:1.5, opacity:.45, color }).addTo(apMap);
         else { e.line.setLatLngs(ll); e.line.setStyle({ color }); }
         apStyleMarker(e);
@@ -865,18 +878,32 @@
           apMap.removeLayer(e.marker); if(e.line) apMap.removeLayer(e.line); delete apAc[hex];
         }
       }
-      let g = 0, a = 0; for(const hex in apAc) apOnGround(apAc[hex].ac) ? g++ : a++;
-      $("ap-stat").innerHTML = `${esc(T.apGround)} <b>${g}</b>, ${esc(T.apAir)} <b>${a}</b>, ${new Date(now).toLocaleTimeString(AS.LANG === "de" ? "de-DE" : "en-GB")}`;
+      let g = 0, a = 0, v = 0;
+      for(const hex in apAc){ const x = apAc[hex].ac; AS.isVehicle(x) ? v++ : apOnGround(x) ? g++ : a++; }
+      $("ap-stat").innerHTML = `${esc(T.apGround)} <b>${g}</b>, ${esc(T.apAir)} <b>${a}</b>, ${v ? `${esc(T.apVeh)} <b>${v}</b>, ` : ""}${new Date(now).toLocaleTimeString(AS.LANG === "de" ? "de-DE" : "en-GB")}`;
     }catch(e){ $("ap-stat").textContent = T.apNoData + " (" + e.message + ")"; }
     finally{ apFetching = false; }
   }
   function apStyleMarker(e){
     const el = e.marker.getElement(); if(!el) return;
     const ac = e.ac, ground = apOnGround(ac);
+    const w0 = el.firstChild, svg0 = w0.querySelector(".ap-ac-svg"), lbl0 = w0.querySelector(".ap-ac-lbl");
+    // Bodenfahrzeug: kleines Quadrat statt Flugzeugsilhouette, ohne Spur
+    if(AS.isVehicle(ac)){
+      svg0.style.display = "none";
+      if(!w0.querySelector(".ap-veh")) w0.insertAdjacentHTML("afterbegin", `<span class="ap-veh"></span>`);
+      w0.style.width = w0.style.height = "0px"; w0.style.transform = "";
+      lbl0.style.left = "8px"; lbl0.style.top = "-7px";
+      const vcs = (ac.flight || "").trim();
+      const vsub = typeof ac.gs === "number" && ac.gs >= 3 ? `${Math.round(ac.gs)} kt` : "";
+      lbl0.innerHTML = esc(vcs) + (vsub ? `<small>${esc(vsub)}</small>` : "");
+      if(e.line){ apMap.removeLayer(e.line); e.line = null; }
+      return;
+    }
     const span = AP_SPAN[(ac.category || "").toUpperCase()] || 34;
     const px = Math.round(Math.max(ground ? 14 : 18, Math.min(120, span / apMpp())));
     const hdg = typeof ac.true_heading === "number" && ground ? ac.true_heading : (typeof ac.track === "number" ? ac.track : 0);
-    const w = el.firstChild, svg = w.firstChild, lbl = w.lastChild;
+    const w = el.firstChild, svg = w.querySelector(".ap-ac-svg"), lbl = w.querySelector(".ap-ac-lbl");
     w.style.width = w.style.height = px + "px"; w.style.transform = `translate(${-px / 2}px, ${-px / 2}px)`;
     svg.setAttribute("width", px); svg.setAttribute("height", px); svg.style.transform = `rotate(${hdg}deg)`;
     const path = svg.firstChild;
@@ -901,18 +928,21 @@
   }
   async function apShowPopup(hex){
     const e = apAc[hex]; if(!e) return;
-    const ac = e.ac, cs = (ac.flight || "").trim(), names = AS.names;
+    const ac = e.ac, cs = (ac.flight || "").trim(), names = AS.names, veh = AS.isVehicle(ac);
     const airline = cs && /^[A-Z]{3}\d/.test(cs) ? (names.airlines[cs.slice(0, 3)] || "") : "";
     const type = ac.t ? (names.types[ac.t] || ac.t) : "";
     const html = [
       `<div class="cs">${esc(cs || ac.r || hex.toUpperCase())}</div>`,
       airline ? `<div>${esc(airline)}</div>` : "",
-      `<div class="mut">${esc([type, ac.r].filter(Boolean).join(", "))}</div>`,
+      veh ? `<div>${esc(T.apVehicle)}</div>` : `<div class="mut">${esc([type, ac.r].filter(Boolean).join(", "))}</div>`,
       `<div class="mut">${esc(apFmtAlt(ac.alt_baro))}${typeof ac.gs === "number" ? ", " + Math.round(ac.gs) + " kt" : ""}</div>`,
-      `<div class="rt" id="ap-rt-${esc(hex)}">${cs ? T.apRoute : ""}</div>`
+      // Kennung und ADS-B-Kategorie: zeigt z. B., ob es ein Bodenfahrzeug ist (C1 bis C3, Kennung mit „~“)
+      `<div class="mut">${esc(T.apHex)} ${esc(hex.toUpperCase())}${hex.startsWith("~") ? " (" + esc(T.apNoIcao) + ")" : ""}</div>`,
+      ac.category ? `<div class="mut">${esc(T.apCat)} ${esc(ac.category)}${T.cats[ac.category] ? ", " + esc(T.cats[ac.category]) : ""}</div>` : "",
+      veh ? "" : `<div class="rt" id="ap-rt-${esc(hex)}">${cs ? T.apRoute : ""}</div>`
     ].join("");
     L.popup({ closeButton:true, autoPan:true, offset:[0, -6] }).setLatLng(e.marker.getLatLng()).setContent(html).openOn(apMap);
-    if(!cs) return;
+    if(!cs || veh) return;
     // Gleicher Routen-Speicher und gleiche Plausibilitätsprüfung wie im Radar
     const j = await AS.getRoute({ flight:cs, lat:ac.lat, lon:ac.lon,
       alt: ac.alt_baro === "ground" ? "ground" : ac.alt_baro, track:ac.track, vRate:ac.baro_rate });
