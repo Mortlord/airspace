@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **2.6** (steht unten rechts in der App).
+Aktuelle Version: **2.7** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -25,7 +25,7 @@ Zusatzfunktionen nur für den Betreiber, in `owner.js`. Die Datei wird nur gelad
 
 - **Datenquelle** oben neben dem Namen: Standort (GPS), Heim-Pi (eigener Empfänger) oder Fixpunkt. Im Heim-Pi- und Fixpunkt-Modus markiert ein Kreuz die Mitte, der blaue Punkt bleibt der eigene Standort.
 - **Favoriten** mit Telegram-Alarm im Umkreis von 20 NM um den eigenen Standort: per Stern im Detailblatt oder als Präfix in den Einstellungen. Favoriten tragen im Radar einen orangen Ring, der Alarmradius ist ein orange gestrichelter Kreis um den Standort. Die Liste wird vor jedem Speichern frisch vom Server geholt, damit nichts überschrieben wird.
-- **Werkzeugleiste:** 3D-Ansicht, Regenradar des DWD (nur Heim-Pi), Flughafenansicht Stuttgart (EDDS) mit Vorfeld, Rollwegen und Pisten; dort empfängt adsb.fi auch den Bodenverkehr gut. Bodenfahrzeuge erscheinen als kleine Quadrate und werden getrennt gezählt; im Radar und in der Liste fehlen sie, weil sie keine Flugzeuge sind.
+- **Werkzeugleiste:** 3D-Ansicht, Regenradar des DWD (in jeder Datenquelle und in der Flughafenansicht), Flughafenansicht Stuttgart (EDDS) mit Vorfeld, Rollwegen und Pisten; dort empfängt adsb.fi auch den Bodenverkehr gut. Bodenfahrzeuge erscheinen als kleine Quadrate und werden getrennt gezählt; im Radar und in der Liste fehlen sie, weil sie keine Flugzeuge sind.
 - **Einstellungen:** Kompass (iPhone, Standort-Modus; Radar und Karte drehen mit der Blickrichtung), Link zur 3D-Empfangsreichweite des Heim-Pi (`coverage.html`), Abmelden.
 
 ## Dateien
@@ -83,7 +83,7 @@ Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "2.6";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "2.7";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 
@@ -111,7 +111,7 @@ Der Server bezieht die Positionen von adsb.fi, ersatzweise von adsb.lol, und die
 - [three.js](https://threejs.org/) r128, selbst gehostet (MIT)
 - Esri Dark Gray Canvas als Grundkarte, Esri World Imagery für die Detailansicht, jeweils ohne API-Key
 - [Planespotters API](https://www.planespotters.net/) für Fotos
-- Owner: DWD-Niederschlagsradar (WMS) im Heim-Pi-Modus
+- Owner: DWD-Niederschlagsradar (WMS)
 
 **Bekannte Einschränkung:** Die App ist nicht offline-fähig; ohne Netz zeigt sie keine Flugzeuge.
 

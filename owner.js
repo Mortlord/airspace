@@ -5,7 +5,7 @@
 
    Eingebaut in die gemeinsame Oberfläche statt angehängt:
    - Kopfzeile: Wähler für die Datenquelle (Standort, Heim-Pi, Fixpunkt)
-   - Werkzeugleiste: 3D-Ansicht, Regenradar (nur Heim-Pi), Flughafen Stuttgart
+   - Werkzeugleiste: 3D-Ansicht, Regenradar, Flughafen Stuttgart
    - Detailblatt: Stern für Favoriten
    - Einstellungen: Kompass (iPhone, Standort) und der Block „Nur für dich“
      mit Favoriten, Empfangsreichweite (coverage.html) und Abmelden
@@ -616,8 +616,9 @@
   cmpRow.addEventListener("click", toggleCompass);
   cmpSw.addEventListener("keydown", e => { if(e.key === " " || e.key === "Enter"){ e.preventDefault(); toggleCompass(); } });
 
-  /* ============ Stufe 6: Regenradar (DWD, nur im Feeder-Modus) ============ */
-  // Niederschlagsradar des Deutschen Wetterdienstes als Ebene über der Hintergrundkarte.
+  /* ============ Stufe 6: Regenradar (DWD) ============ */
+  // Niederschlagsradar des Deutschen Wetterdienstes als Ebene über der Hintergrundkarte, in jeder
+  // Datenquelle und in der Flughafenansicht. Das DWD-Bild deckt Deutschland und die Grenzgebiete ab.
   // Das neueste Messbild liegt etwa 5 bis 10 Minuten zurück: jetzt minus 8 Minuten, auf 5 Minuten abgerundet.
   const wx = { on: AS.LS.get("ownerWx", false), layer:null };
   const WX_STEP = 5 * 60000;
@@ -627,11 +628,11 @@
     `<svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1 .5-8A5 5 0 0 1 17 8a3.5 3.5 0 0 1 0 7z"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2"/></svg>`);
   const wxCredit = document.createElement("p"); wxCredit.className = "map-credit"; wxCredit.hidden = true;
   $("mapCredit").after(wxCredit);
-  const wxActive = () => wx.on && !!AS.source && AS.source.id === "feeder";
+  const wxActive = () => wx.on;
   AS.mapForced = () => wxActive();
   function applyWx(){
-    wxBt.hidden = !(AS.source && AS.source.id === "feeder");
     wxBt.classList.toggle("active", wx.on);
+    wxBt.setAttribute("aria-pressed", String(wx.on));
     const map = window.L ? AS.bgMap : null;
     if(wxActive() && map){
       if(!wx.layer){
@@ -650,11 +651,13 @@
       wxCredit.hidden = true;
     }
     AS.applyBgMap();
+    if(typeof applyApWx === "function") applyApWx();
   }
-  wxBt.addEventListener("click", () => { wx.on = !wx.on; AS.LS.set("ownerWx", wx.on); applyWx(); });
+  function toggleWx(){ wx.on = !wx.on; AS.LS.set("ownerWx", wx.on); applyWx(); }
+  wxBt.addEventListener("click", toggleWx);
   setInterval(() => { if(wxActive()) applyWx(); }, 60000);
 
-  // Kompass nur im Live-Modus, Regenradar nur im Feeder-Modus: bei jedem Quellenwechsel neu prüfen
+  // Kompass nur im Standort-Modus: bei jedem Quellenwechsel neu prüfen
   const origSetSource = AS.setSource;
   AS.setSource = src => { origSetSource(src); afterSourceChange(); };
   function afterSourceChange(){
@@ -687,6 +690,7 @@
     #ap-head .ap-sp{flex:1}
     #ap-head button{background:var(--bg);border:1px solid var(--line);color:var(--txt-dim);border-radius:4px;
       padding:6px 10px;font:15px var(--font);cursor:pointer}
+    #ap-head button[aria-pressed="true"]{color:var(--sel);border-color:var(--sel)}
     #ap-head button.ap-close{font-size:18px;line-height:1;padding:4px 10px}
     #ap-map{flex:1;background:#404042}   /* Grundton der Kacheln: Haarlinien zwischen Kacheln fallen nicht auf */
     #ap-map .leaflet-control-attribution{background:rgba(18,22,28,.8);color:var(--txt-dim);font:10px var(--font)}
@@ -721,7 +725,7 @@
   apView.id = "ap-view"; apView.setAttribute("role", "dialog"); apView.setAttribute("aria-label", T.tAirport);
   apView.innerHTML = `<div id="ap-head"><div class="ap-title">${esc(AP.name)}<span>${esc(AP.icao)}</span></div>
       <div class="ap-stat" id="ap-stat">${esc(T.apLoading)}</div><div class="ap-sp"></div>
-      <button data-ap="apron">${esc(T.apApron)}</button><button data-ap="area">${esc(T.apArea)}</button>
+      <button data-ap="apron">${esc(T.apApron)}</button><button data-ap="area">${esc(T.apArea)}</button><button data-ap="wx" aria-pressed="false">${esc(T.tRain)}</button>
       <button class="ap-close" data-ap="close" aria-label="${esc(T.apClose)}">×</button></div><div id="ap-map"></div>`;
   document.body.appendChild(apView);
   const apBt = toolButton(T.tAirport,
@@ -751,6 +755,7 @@
   apView.querySelector("#ap-head").addEventListener("click", e => {
     const b = e.target.closest("button[data-ap]"); if(!b) return;
     if(b.dataset.ap === "close") closeAirportView();
+    else if(b.dataset.ap === "wx") toggleWx();
     else if(b.dataset.ap === "apron"){
       if(AP.apron) apMap.flyToBounds(AP.apron, { padding:[16, 16], duration:.8 });
       else apMap.flyTo([AP.lat, AP.lon], 15, { duration:.8 });
@@ -759,6 +764,23 @@
   });
   document.addEventListener("keydown", e => { if(apOpen && e.key === "Escape") closeAirportView(); });
 
+  // Regenradar auch in der Flughafenansicht, gesteuert über denselben Schalter wie im Radar
+  let apWx = null;
+  function applyApWx(){
+    const b = apView.querySelector('[data-ap="wx"]'); if(b) b.setAttribute("aria-pressed", String(wx.on));
+    if(!apMap) return;
+    if(wx.on){
+      if(!apWx){
+        apMap.createPane("apWx").style.zIndex = 300;
+        apWx = L.tileLayer.wms("https://maps.dwd.de/geoserver/dwd/wms", {
+          layers:"dwd:Niederschlagsradar", format:"image/png", transparent:true,
+          version:"1.3.0", pane:"apWx", opacity:.7, maxZoom:19, time:wxTime()
+        });
+      }
+      if(!apMap.hasLayer(apWx)) apWx.addTo(apMap);
+      if(apWx.wmsParams.time !== wxTime()) apWx.setParams({ time:wxTime() });
+    } else if(apWx && apMap.hasLayer(apWx)) apMap.removeLayer(apWx);
+  }
   function apInitMap(){
     apMap = L.map("ap-map", { zoomControl:false, zoomSnap:.25, minZoom:8, maxZoom:19 }).setView([AP.lat, AP.lon], 14.5);
     apMap.attributionControl.setPrefix(false);
@@ -771,7 +793,7 @@
       { maxZoom:19, maxNativeZoom:16 }).addTo(apMap);
     L.rectangle([[-85, -180], [85, 180]], { pane:"apScrim", interactive:false, stroke:false, fillColor:"#0a0d12", fillOpacity:.62 }).addTo(apMap);
     apMap.on("zoomend", apOnZoom);
-    apLoadGeo(); apOnZoom();
+    apLoadGeo(); apOnZoom(); applyApWx();
   }
   function apText(ll, text, cls){
     L.marker(ll, { interactive:false, keyboard:false,
