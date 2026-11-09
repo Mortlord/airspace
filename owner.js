@@ -37,7 +37,7 @@
          t3d:"3D-Ansicht", tRain:"Regenradar", tAirport:"Flughafen Stuttgart",
          rainCredit:t=>`Regenradar: Deutscher Wetterdienst, ${t} Uhr`, v3fail:"Die 3D-Ansicht konnte nicht geladen werden (three.min.js fehlt?).",
          apLoading:"Lade …", apApron:"Vorfeld", apArea:"Umgebung", apClose:"Schließen", apGround:"Boden", apAir:"Luft", apVeh:"Fahrzeuge", apVehicle:"Bodenfahrzeug", apNoData:"Keine Daten",
-         apHex:"Kennung", apCat:"Kategorie", apNoIcao:"keine ICAO-Adresse",
+         apHex:"Kennung", apCat:"Kategorie", apTimeout:"Zeitüberschreitung", apPosAge:s=>`Position vor ${s} s`, apNoIcao:"keine ICAO-Adresse",
          cats:{A1:"leichtes Flugzeug",A2:"kleines Flugzeug",A3:"großes Flugzeug",A4:"Boeing 757",A5:"schweres Flugzeug",A6:"Hochleistungsflugzeug",
                A7:"Hubschrauber",B1:"Segelflugzeug",B2:"Ballon",B3:"Fallschirmspringer",B4:"Ultraleicht",B6:"Drohne",B7:"Raumfahrzeug",
                C1:"Einsatzfahrzeug",C2:"Servicefahrzeug",C3:"Hindernis"},
@@ -54,7 +54,7 @@
          t3d:"3D view", tRain:"Rain radar", tAirport:"Stuttgart airport",
          rainCredit:t=>`Rain radar: Deutscher Wetterdienst, ${t}`, v3fail:"The 3D view could not be loaded (three.min.js missing?).",
          apLoading:"Loading …", apApron:"Apron", apArea:"Area", apClose:"Close", apGround:"Ground", apAir:"Air", apVeh:"Vehicles", apVehicle:"Ground vehicle", apNoData:"No data",
-         apHex:"Hex", apCat:"Category", apNoIcao:"no ICAO address",
+         apHex:"Hex", apCat:"Category", apTimeout:"timeout", apPosAge:s=>`Position ${s} s old`, apNoIcao:"no ICAO address",
          cats:{A1:"light aircraft",A2:"small aircraft",A3:"large aircraft",A4:"Boeing 757",A5:"heavy aircraft",A6:"high performance",
                A7:"helicopter",B1:"glider",B2:"balloon",B3:"parachutist",B4:"ultralight",B6:"drone",B7:"space vehicle",
                C1:"emergency vehicle",C2:"service vehicle",C3:"obstacle"},
@@ -864,8 +864,11 @@
   async function apPoll(){
     if(!apOpen || apFetching) return;
     apFetching = true;
+    // Ohne Zeitlimit kann eine hängende Anfrage (etwa beim Netzwechsel) jeden weiteren Abruf blockieren;
+    // dann bleiben alle Flugzeuge stehen, obwohl adsb.fi längst neue Positionen hat
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
     try{
-      const r = await fetch(`${BASE}/aircraft?lat=${AP.lat}&lon=${AP.lon}&radius=${apRadiusNm()}`, { cache:"no-store" });
+      const r = await fetch(`${BASE}/aircraft?lat=${AP.lat}&lon=${AP.lon}&radius=${apRadiusNm()}`, { cache:"no-store", signal:ctl.signal });
       if(!r.ok) throw new Error("HTTP " + r.status);
       const data = await r.json(), list = data.ac || data.aircraft || [], now = Date.now();
       // Bezugszeit der Daten (der Server cacht einige Sekunden): seen_pos bezieht sich auf data.now
@@ -883,8 +886,11 @@
           e.marker.on("click", () => apShowPopup(ac.hex));
         }
         const posTs = dataNow - (typeof ac.seen_pos === "number" ? ac.seen_pos : 0) * 1000;
-        if(e.posTs && posTs <= e.posTs){ e.seenAt = now; continue; }   // keine ältere Position übernehmen
-        e.ac = ac; e.ts = Math.min(posTs, now); e.posTs = posTs; e.seenAt = now;
+        // Keine ältere Position übernehmen. Eine veränderte Position gilt aber auch dann, wenn ihr Zeitstempel
+        // bis zu 15 s älter wirkt: Server und Quellen liefern nicht immer exakt gleich getaktete Zeitstempel.
+        const moved = e.ac && (ac.lat !== e.ac.lat || ac.lon !== e.ac.lon);
+        if(e.posTs && (moved ? posTs < e.posTs - 15000 : posTs <= e.posTs)){ e.seenAt = now; continue; }
+        e.ac = ac; e.ts = Math.min(posTs, now); e.posTs = Math.max(posTs, e.posTs || 0); e.seenAt = now; e.recvAt = now;
         const last = e.trail[e.trail.length - 1];
         if(!last || last[0] !== ac.lat || last[1] !== ac.lon) e.trail.push([ac.lat, ac.lon, e.ts]);
         while(e.trail.length && now - e.trail[0][2] > AP_TRAIL_MS) e.trail.shift();
@@ -903,8 +909,8 @@
       let g = 0, a = 0, v = 0;
       for(const hex in apAc){ const x = apAc[hex].ac; AS.isVehicle(x) ? v++ : apOnGround(x) ? g++ : a++; }
       $("ap-stat").innerHTML = `${esc(T.apGround)} <b>${g}</b>, ${esc(T.apAir)} <b>${a}</b>, ${v ? `${esc(T.apVeh)} <b>${v}</b>, ` : ""}${new Date(now).toLocaleTimeString(AS.LANG === "de" ? "de-DE" : "en-GB")}`;
-    }catch(e){ $("ap-stat").textContent = T.apNoData + " (" + e.message + ")"; }
-    finally{ apFetching = false; }
+    }catch(e){ $("ap-stat").textContent = T.apNoData + " (" + (e.name === "AbortError" ? T.apTimeout : e.message) + ")"; }
+    finally{ clearTimeout(timer); apFetching = false; }
   }
   function apStyleMarker(e){
     const el = e.marker.getElement(); if(!el) return;
@@ -943,9 +949,17 @@
     const now = Date.now();
     for(const hex in apAc){
       const e = apAc[hex], ac = e.ac;
-      if(typeof ac.gs !== "number" || typeof ac.track !== "number" || ac.gs < 3) continue;
-      const dNm = ac.gs * Math.min(12, (now - e.ts) / 1000) / 3600, tr = ac.track * Math.PI / 180;
-      e.marker.setLatLng([ac.lat + dNm / 60 * Math.cos(tr), ac.lon + dNm / 60 * Math.sin(tr) / Math.cos(ac.lat * Math.PI / 180)]);
+      // Am Boden fehlt oft der Kurs (dann nur die Ausrichtung des Flugzeugs) oder das Tempo ist sehr klein.
+      // Dann nicht hochrechnen, aber immer die zuletzt gemeldete Position zeigen. Früher blieb das Symbol in
+      // diesen Fällen an der allerersten Position stehen, obwohl neue Meldungen kamen.
+      const crs = typeof ac.track === "number" ? ac.track : (typeof ac.true_heading === "number" ? ac.true_heading : null);
+      let pos = [ac.lat, ac.lon];
+      if(typeof ac.gs === "number" && ac.gs >= 3 && crs !== null){
+        const dNm = ac.gs * Math.min(12, (now - e.ts) / 1000) / 3600, tr = crs * Math.PI / 180;
+        pos = [ac.lat + dNm / 60 * Math.cos(tr), ac.lon + dNm / 60 * Math.sin(tr) / Math.cos(ac.lat * Math.PI / 180)];
+      }
+      const cur = e.marker.getLatLng();
+      if(cur.lat !== pos[0] || cur.lng !== pos[1]) e.marker.setLatLng(pos);
     }
   }
   async function apShowPopup(hex){
@@ -959,6 +973,7 @@
       veh ? `<div>${esc(T.apVehicle)}</div>` : `<div class="mut">${esc([type, ac.r].filter(Boolean).join(", "))}</div>`,
       `<div class="mut">${esc(apFmtAlt(ac.alt_baro))}${typeof ac.gs === "number" ? ", " + Math.round(ac.gs) + " kt" : ""}</div>`,
       // Kennung und ADS-B-Kategorie: zeigt z. B., ob es ein Bodenfahrzeug ist (C1 bis C3, Kennung mit „~“)
+      `<div class="mut">${esc(T.apPosAge(Math.round((typeof ac.seen_pos === "number" ? ac.seen_pos : 0) + (Date.now() - (e.recvAt || Date.now())) / 1000)))}</div>`,
       `<div class="mut">${esc(T.apHex)} ${esc(hex.toUpperCase())}${hex.startsWith("~") ? " (" + esc(T.apNoIcao) + ")" : ""}</div>`,
       ac.category ? `<div class="mut">${esc(T.apCat)} ${esc(ac.category)}${T.cats[ac.category] ? ", " + esc(T.cats[ac.category]) : ""}</div>` : "",
       veh ? "" : `<div class="rt" id="ap-rt-${esc(hex)}">${cs ? T.apRoute : ""}</div>`
