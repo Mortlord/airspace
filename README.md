@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **2.9** (steht unten rechts in der App).
+Aktuelle Version: **3.0** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -25,7 +25,7 @@ Zusatzfunktionen nur für den Betreiber, in `owner.js`. Die Datei wird nur gelad
 
 - **Datenquelle** oben neben dem Namen: Standort (GPS), Heim-Pi (eigener Empfänger) oder Fixpunkt. Im Heim-Pi- und Fixpunkt-Modus markiert ein Kreuz die Mitte, der blaue Punkt bleibt der eigene Standort.
 - **Favoriten** mit Telegram-Alarm im Umkreis von 20 NM um den eigenen Standort: per Stern im Detailblatt oder als Präfix in den Einstellungen. Favoriten tragen im Radar einen orangen Ring, der Alarmradius ist ein orange gestrichelter Kreis um den Standort. Die Liste wird vor jedem Speichern frisch vom Server geholt, damit nichts überschrieben wird.
-- **Werkzeugleiste:** 3D-Ansicht, Regenradar des DWD (in jeder Datenquelle und in der Flughafenansicht), Flughafenansicht Stuttgart (EDDS) mit Vorfeld, Rollwegen und Pisten; dort empfängt adsb.fi auch den Bodenverkehr gut. Bodenfahrzeuge erscheinen als kleine Quadrate und werden getrennt gezählt; im Radar und in der Liste fehlen sie, weil sie keine Flugzeuge sind.
+- **Werkzeugleiste:** 3D-Ansicht, Regenradar des DWD (in jeder Datenquelle und in der Flughafenansicht), Flughafenansicht Stuttgart (EDDS) als freigestellter Lageplan; dort empfängt adsb.fi auch den Bodenverkehr gut. Flugzeuge nach Zustand eingefärbt (am Stand grau, rollend blau, auf der Piste und in der Luft hell) mit Namensschild aus Callsign und Typ, Kennzahlen oben, abgeleitete Betriebsrichtung unten und eine Bewegungsliste (im Anflug mit geschätzter Landezeit, startet, rollt, am Stand). Die Einteilung schätzt die App aus Position, Höhe, Tempo und Kurs. Bodenfahrzeuge erscheinen als kleine Quadrate und werden getrennt gezählt; im Radar und in der Liste fehlen sie, weil sie keine Flugzeuge sind.
 - **Einstellungen:** Kompass (iPhone, Standort-Modus; Radar und Karte drehen mit der Blickrichtung), Link zur 3D-Empfangsreichweite des Heim-Pi (`coverage.html`), Abmelden.
 
 ## Dateien
@@ -83,7 +83,7 @@ Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "2.9";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.0";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 

@@ -37,6 +37,11 @@
          t3d:"3D-Ansicht", tRain:"Regenradar", tAirport:"Flughafen Stuttgart",
          rainCredit:t=>`Regenradar: Deutscher Wetterdienst, ${t} Uhr`, v3fail:"Die 3D-Ansicht konnte nicht geladen werden (three.min.js fehlt?).",
          apLoading:"Lade …", apApron:"Vorfeld", apArea:"Umgebung", apClose:"Schließen", apGround:"Boden", apAir:"Luft", apVeh:"Fahrzeuge", apVehicle:"Bodenfahrzeug", apNoData:"Keine Daten",
+         apBack:"Zurück zum Radar", apMovements:"Bewegungen", apChipArr:n=>"Anflug", apChipTaxi:n=>n===1?"rollt":"rollen", apChipStand:n=>"am Stand", apChipVeh:n=>n===1?"Fahrzeug":"Fahrzeuge",
+         apRwy:r=>`Piste ${r} in Betrieb`, apRwyShort:r=>`Piste ${r}`, apRwyUnknown:"Piste –", apRwyUnknownLong:"Betriebsrichtung noch nicht erkannt",
+         apSecArr:"Im Anflug", apSecDep:"Startet", apSecTaxi:"Rollt", apSecStand:"Am Stand",
+         apLanding:"Landung", apLandRwy:r=>`Landung, Piste ${r}`, apOnRwy:r=>`auf Piste ${r}`, apRunway:"auf der Piste", apClimbing:"steigt",
+         apFrom:c=>`aus ${c}`, apTo:c=>`nach ${c}`, apNow:"jetzt", apStandSum:(a,v)=>`${a} ${a===1?"Flugzeug":"Flugzeuge"}, ${v} ${v===1?"Fahrzeug":"Fahrzeuge"}`,
          apHex:"Kennung", apCat:"Kategorie", apTimeout:"Zeitüberschreitung", apPosAge:s=>`Position vor ${s} s`, apNoIcao:"keine ICAO-Adresse",
          cats:{A1:"leichtes Flugzeug",A2:"kleines Flugzeug",A3:"großes Flugzeug",A4:"Boeing 757",A5:"schweres Flugzeug",A6:"Hochleistungsflugzeug",
                A7:"Hubschrauber",B1:"Segelflugzeug",B2:"Ballon",B3:"Fallschirmspringer",B4:"Ultraleicht",B6:"Drohne",B7:"Raumfahrzeug",
@@ -54,6 +59,11 @@
          t3d:"3D view", tRain:"Rain radar", tAirport:"Stuttgart airport",
          rainCredit:t=>`Rain radar: Deutscher Wetterdienst, ${t}`, v3fail:"The 3D view could not be loaded (three.min.js missing?).",
          apLoading:"Loading …", apApron:"Apron", apArea:"Area", apClose:"Close", apGround:"Ground", apAir:"Air", apVeh:"Vehicles", apVehicle:"Ground vehicle", apNoData:"No data",
+         apBack:"Back to radar", apMovements:"Movements", apChipArr:n=>"arriving", apChipTaxi:n=>"taxiing", apChipStand:n=>"at stand", apChipVeh:n=>n===1?"vehicle":"vehicles",
+         apRwy:r=>`Runway ${r} in use`, apRwyShort:r=>`Runway ${r}`, apRwyUnknown:"Runway –", apRwyUnknownLong:"Runway in use not yet detected",
+         apSecArr:"Arriving", apSecDep:"Departing", apSecTaxi:"Taxiing", apSecStand:"At stand",
+         apLanding:"landing", apLandRwy:r=>`landing, runway ${r}`, apOnRwy:r=>`on runway ${r}`, apRunway:"on the runway", apClimbing:"climbing",
+         apFrom:c=>`from ${c}`, apTo:c=>`to ${c}`, apNow:"now", apStandSum:(a,v)=>`${a} aircraft, ${v} ${v===1?"vehicle":"vehicles"}`,
          apHex:"Hex", apCat:"Category", apTimeout:"timeout", apPosAge:s=>`Position ${s} s old`, apNoIcao:"no ICAO address",
          cats:{A1:"light aircraft",A2:"small aircraft",A3:"large aircraft",A4:"Boeing 757",A5:"heavy aircraft",A6:"high performance",
                A7:"helicopter",B1:"glider",B2:"balloon",B3:"parachutist",B4:"ultralight",B6:"drone",B7:"space vehicle",
@@ -666,33 +676,57 @@
   }
 
   /* ============ Stufe 8: Flughafenansicht ============ */
-  // Vollbildkarte mit Vorfeld, Rollwegen, Pisten und Gebäuden aus OpenStreetMap (Datei im Repo,
-  // © OpenStreetMap-Mitwirkende, ODbL). Flugzeuge über /aircraft um den Flughafen, am Boden maßstäblich.
-  // Stuttgart statt Basel-Mulhouse, weil adsb.fi dort auch Bodenverkehr gut empfängt. Für einen anderen
-  // Flughafen genügt es, AP anzupassen und die passende Datei aus Overpass Turbo abzulegen.
-  // Solange die Ansicht offen ist, pausiert der Abruf des Hauptradars.
+  // Der Flughafen als freigestellter Lageplan aus OpenStreetMap (Datei im Repo, © OpenStreetMap-Mitwirkende,
+  // ODbL): Piste hell, Rollwege mittelgrau, Vorfeld abgesetzt, die Straßenkarte darunter stark gedämpft.
+  // Flugzeuge über /aircraft um den Flughafen, nach Zustand eingefärbt: am Stand grau, rollend blau,
+  // auf der Piste und in der Luft hell. Bodenfahrzeuge als kleine Quadrate.
+  // Aus Position, Höhe, Tempo und Kurs leitet die Ansicht ab, wer anfliegt, rollt, startet oder steht,
+  // und welche Pistenrichtung in Betrieb ist. Diese Ableitungen sind Schätzungen, keine Lotsendaten.
+  // Für einen anderen Flughafen genügt es, AP anzupassen und die passende Datei aus Overpass Turbo abzulegen.
   const AP = { icao:"EDDS", name:"Stuttgart", lat:48.6900, lon:9.2219, dataUrl:"airport-edds.json",
                apron:null };   // Bereich des Vorfelds, wird aus den Flughafendaten bestimmt
   const AP_POLL_MS = 2000, AP_STALE_S = 60, AP_TRAIL_MS = 3 * 60 * 1000, AP_TAXI_WIDTH = 23;
   const AP_SPAN = { A1:12, A2:20, A3:36, A4:40, A5:62, A7:12, B1:15, B4:10 };
   const AP_PLANE = "M0,-48C4,-48 5,-40 5,-30L5,-10L46,8L46,15L5,6L4,30L16,40L16,46L0,42L-16,46L-16,40L-4,30L-5,6L-46,15L-46,8L-5,-10L-5,-30C-5,-40 -4,-48 0,-48Z";
+  const AP_COL = { stand:"#6f7883", taxi:"#4a9fd4", rwy:"#f2f5f8", air:"#e6ecf2" };
   const apCss = document.createElement("style");
   apCss.textContent = `
     #ap-view{position:fixed;inset:0;z-index:3000;display:none;flex-direction:column;background:var(--bg);
-      padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+      padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);font-family:var(--font)}
     #ap-view.open{display:flex}
-    #ap-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;
-      background:var(--surface);border-bottom:1px solid var(--line);font-family:var(--font)}
-    #ap-head .ap-title{font-weight:600;font-size:18px;color:var(--txt)}
-    #ap-head .ap-title span{font-family:var(--font-data);font-size:13px;color:var(--txt-dim);margin-left:6px}
-    #ap-head .ap-stat{font-family:var(--font-data);font-size:13px;color:var(--txt-dim)}
-    #ap-head .ap-stat b{color:var(--txt);font-weight:600}
-    #ap-head .ap-sp{flex:1}
-    #ap-head button{background:var(--bg);border:1px solid var(--line);color:var(--txt-dim);border-radius:4px;
-      padding:6px 10px;font:15px var(--font);cursor:pointer}
-    #ap-head button[aria-pressed="true"]{color:var(--sel);border-color:var(--sel)}
-    #ap-head button.ap-close{font-size:18px;line-height:1;padding:4px 10px}
+    #ap-head{display:flex;align-items:center;gap:8px;height:52px;padding:0 12px 0 4px;border-bottom:1px solid var(--line)}
+    #ap-head .ap-title{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;font-weight:700;font-size:20px;color:var(--txt-hi)}
+    #ap-head .ap-title span{font:12px var(--font-data);color:var(--txt-dim)}
+    #ap-clock{font:12px var(--font-data);color:var(--txt-dim)}
+    #ap-clock.stale{color:var(--warn)}
+    #ap-chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line)}
+    .ap-chip{display:flex;align-items:center;gap:5px;height:28px;padding:0 10px;background:var(--surface);
+      border:1px solid var(--line);border-radius:14px;font:12px var(--font-data);color:var(--txt-dim)}
+    .ap-chip b{font-weight:600}
+    .ap-err{font:12px var(--font-data);color:var(--warn);align-self:center}
+    #ap-wrap{position:relative;flex:1;min-height:0;display:flex}
     #ap-map{flex:1;background:#404042}   /* Grundton der Kacheln: Haarlinien zwischen Kacheln fallen nicht auf */
+    #ap-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-top:1px solid var(--line);background:var(--bg)}
+    #ap-bar .tb-sp{flex:1}
+    .ap-rwyuse{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;background:var(--surface);
+      border:1px solid var(--line);border-radius:6px;font:12px var(--font-data);color:var(--txt);white-space:nowrap}
+    .ap-rwyuse i{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+    .ap-rwyuse.unknown{color:var(--txt-dim)} .ap-rwyuse.unknown i{background:#4a5563}
+    #ap-sheet{position:absolute;left:0;right:0;bottom:0;max-height:62%;overflow-y:auto;overscroll-behavior:contain;z-index:1000;
+      background:var(--surface);border-top:1px solid var(--line);border-radius:14px 14px 0 0;padding:6px 16px 12px}
+    #ap-sheet[hidden]{display:none}
+    #ap-sheet .grip{width:40px;height:4px;border-radius:2px;background:#3a4552;margin:0 auto 6px}
+    #ap-sheet h3{margin:0;display:flex;justify-content:space-between;align-items:baseline;font-size:20px;font-weight:700;color:var(--txt-hi)}
+    #ap-sheet h3 span{font:12px var(--font-data);font-weight:400;color:var(--txt-dim)}
+    .ap-sec{display:block;margin:12px 0 2px;font:11px var(--font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--txt-dim)}
+    .ap-row{display:grid;grid-template-columns:84px 44px minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:48px;
+      padding:0 2px;background:transparent;border:0;border-bottom:1px solid #222a33;text-align:left;color:var(--txt);cursor:pointer}
+    .ap-row .cs{font:600 13px var(--font-data);color:var(--txt-hi)}
+    .ap-row.taxi .cs{color:#9fd0f2}
+    .ap-row .ty{font:11px var(--font-data);color:var(--txt-dim)}
+    .ap-row .wh{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ap-row .tm{font:12px var(--font-data);color:var(--txt-dim)}
+    .ap-empty{display:block;padding:8px 2px;font-size:15px;color:var(--txt-dim)}
     #ap-map .leaflet-control-attribution{background:rgba(18,22,28,.8);color:var(--txt-dim);font:10px var(--font)}
     #ap-map .leaflet-control-attribution a{color:inherit}
     .ap-ac{background:none;border:none}
@@ -702,16 +736,23 @@
     .ap-ac-svg{position:absolute;left:0;top:0;overflow:visible}
     .ap-veh{position:absolute;left:0;top:0;width:10px;height:10px;transform:translate(-5px,-5px);border-radius:2px;
       background:#6f8796;border:1.5px solid #0a0d12;box-sizing:border-box}
-    .ap-ac-lbl{position:absolute;white-space:nowrap;font:10.5px/1.25 var(--font-data);color:var(--txt);
-      text-shadow:0 0 3px #0a0d12,0 0 3px #0a0d12,0 0 2px #0a0d12;pointer-events:auto;cursor:pointer}
-    .ap-ac-lbl small{display:block;color:var(--txt-dim);font-size:9.5px}
+    /* Namensschild: Callsign und Typ */
+    .ap-tag{position:absolute;display:flex;align-items:center;gap:5px;height:20px;padding:0 8px;white-space:nowrap;
+      background:rgba(26,31,39,.92);border:1px solid var(--line);border-radius:10px;font:600 11px var(--font-data);
+      color:var(--txt-hi);cursor:pointer;pointer-events:auto}
+    .ap-tag small{font-weight:400;font-size:10px;color:var(--txt-dim)}
+    .ap-tag[hidden]{display:none}
+    .ap-tag.taxi{border-color:#2b5a80;color:#9fd0f2}
+    .ap-tag.rwy,.ap-tag.air{border-color:#8a96a3}
+    .ap-tag.veh{background:none;border:0;padding:0 2px;font-weight:400;color:var(--txt-dim)}
     .ap-txt{background:none;border:none}
     .ap-txt div{transform:translate(-50%,-50%);white-space:nowrap;font-family:var(--font-data);color:var(--txt-dim);
       text-shadow:0 0 3px #0a0d12,0 0 3px #0a0d12;pointer-events:none}
-    .ap-rwy div{font-size:13px;color:#9aa6b3;font-weight:600}
+    .ap-rwy div{font-size:15px;font-weight:600;color:#c3ccd6}
     .ap-gate div{font-size:9.5px}
-    .ap-bldg div{font-family:var(--font);font-size:11px}
+    .ap-bldg div{font-family:var(--font);font-size:12px;font-weight:600;color:#97a2af}
     #ap-map.ap-z-lo .ap-gate,#ap-map.ap-z-lo .ap-bldg{display:none}
+    #ap-map.ap-z-lo .ap-tag.stand{display:none}
     #ap-map.ap-z-far .ap-rwy{display:none}
     #ap-map .leaflet-popup-content-wrapper,#ap-map .leaflet-popup-tip{background:var(--surface);color:var(--txt);
       border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.5)}
@@ -721,22 +762,86 @@
     #ap-map .leaflet-popup-content .rt{font-family:var(--font-data);color:var(--sel);margin-top:4px}
     #ap-map a.leaflet-popup-close-button{color:var(--txt-dim)}`;
   document.head.appendChild(apCss);
+  const IC = {
+    back:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
+    list:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>',
+    apron:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4z"/><path d="M8 7v10M12 7v10M16 7v10"/></svg>',
+    area:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
+    rain:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14a4 4 0 0 1 .5-8A5 5 0 0 1 17 7a3.5 3.5 0 0 1 0 7z"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3"/></svg>'
+  };
   const apView = document.createElement("div");
   apView.id = "ap-view"; apView.setAttribute("role", "dialog"); apView.setAttribute("aria-label", T.tAirport);
-  apView.innerHTML = `<div id="ap-head"><div class="ap-title">${esc(AP.name)}<span>${esc(AP.icao)}</span></div>
-      <div class="ap-stat" id="ap-stat">${esc(T.apLoading)}</div><div class="ap-sp"></div>
-      <button data-ap="apron">${esc(T.apApron)}</button><button data-ap="area">${esc(T.apArea)}</button><button data-ap="wx" aria-pressed="false">${esc(T.tRain)}</button>
-      <button class="ap-close" data-ap="close" aria-label="${esc(T.apClose)}">×</button></div><div id="ap-map"></div>`;
+  apView.innerHTML = `
+    <div id="ap-head">
+      <button class="tool" data-ap="close" aria-label="${esc(T.apBack)}" style="border:0;background:none">${IC.back}</button>
+      <div class="ap-title">${esc(AP.name)}<span>${esc(AP.icao)}</span></div>
+      <span id="ap-clock"></span>
+    </div>
+    <div id="ap-chips"><span class="ap-chip">${esc(T.apLoading)}</span></div>
+    <div id="ap-wrap"><div id="ap-map"></div>
+      <div id="ap-sheet" hidden role="region" aria-label="${esc(T.apMovements)}"><div class="grip"></div>
+        <h3>${esc(T.apMovements)}<span id="ap-sheet-rwy"></span></h3><div id="ap-list"></div></div>
+    </div>
+    <div id="ap-bar">
+      <span class="ap-rwyuse unknown" id="ap-rwyuse"><i></i><span>${esc(T.apRwyUnknown)}</span></span>
+      <span class="tb-sp"></span>
+      <button class="tool" data-ap="list" aria-label="${esc(T.apMovements)}" aria-pressed="false">${IC.list}</button>
+      <button class="tool" data-ap="apron" aria-label="${esc(T.apApron)}">${IC.apron}</button>
+      <button class="tool" data-ap="area" aria-label="${esc(T.apArea)}">${IC.area}</button>
+      <button class="tool" data-ap="wx" aria-label="${esc(T.tRain)}" aria-pressed="false">${IC.rain}</button>
+    </div>`;
   document.body.appendChild(apView);
   const apBt = toolButton(T.tAirport,
     `<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10h14v11M9 21v-5h6v5M8 10V6h8v4M12 6V3"/></svg>`);
-  let apMap = null, apTimer = null, apAnim = null, apFetching = false, apOpen = false;
-  const apScaled = [], apAc = {};
+  let apMap = null, apTimer = null, apAnim = null, apFetching = false, apOpen = false, apLastOk = 0;
+  const apScaled = [], apAc = {}, apRunways = [];
+  let apRwyUse = null;   // {ref, at}: zuletzt beobachtete Betriebsrichtung
   AS.paused = () => apOpen;
   const apMpp = () => 156543.03392 * Math.cos(apMap.getCenter().lat * Math.PI / 180) / Math.pow(2, apMap.getZoom());
   const apOnGround = ac => ac.alt_baro === "ground" || (typeof ac.gs === "number" && ac.gs < 35 && typeof ac.alt_baro === "number" && ac.alt_baro < 1500);
-  const apAltColor = alt => typeof alt !== "number" ? "#9c8a70" : alt < 5000 ? "#6f7d8c" : alt < 15000 ? "#8a97a5" : alt < 30000 ? "#a9b4c0" : "#cdd6e0";
   const apFmtAlt = alt => alt === "ground" ? T.apGround : typeof alt !== "number" ? "" : alt < 5000 ? `${Math.round(alt / 100) * 100} ft` : `FL${String(Math.round(alt / 100)).padStart(3, "0")}`;
+  const angDiff = (a, b) => { const d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; };
+  const rwyNum = d => String(((Math.round(d / 10) + 35) % 36) + 1).padStart(2, "0");
+  const apCourse = ac => typeof ac.track === "number" ? ac.track : (typeof ac.true_heading === "number" ? ac.true_heading : null);
+
+  // Abstand eines Punkts zur Mittellinie einer Piste in Metern (lokal eben gerechnet) und ob er zwischen den Enden liegt
+  function onRunway(lat, lon){
+    for(const r of apRunways){
+      const k = Math.cos(r.a[0] * Math.PI / 180) * 111320, m = 110540;
+      const ax = 0, ay = 0, bx = (r.b[1] - r.a[1]) * k, by = (r.b[0] - r.a[0]) * m;
+      const px = (lon - r.a[1]) * k, py = (lat - r.a[0]) * m;
+      const L2 = bx * bx + by * by, t = ((px - ax) * bx + (py - ay) * by) / L2;
+      if(t < -0.02 || t > 1.02) continue;
+      if(Math.hypot(px - t * bx, py - t * by) <= Math.max(45, r.width)) return r;
+    }
+    return null;
+  }
+  // Pistenbezeichnung für eine Bewegungsrichtung, z. B. „07“ beim Rollen Richtung Osten auf 07/25
+  function rwyFor(r, crs){
+    if(crs === null) return null;
+    if(angDiff(crs, r.brg) < 30) return r.refA;
+    if(angDiff(crs, (r.brg + 180) % 360) < 30) return r.refB;
+    return null;
+  }
+  // Was macht das Flugzeug gerade? stand, taxi, rwy (Start- oder Landelauf), arr, dep, other, veh
+  function classify(ac){
+    if(AS.isVehicle(ac)) return { k:"veh" };
+    const crs = apCourse(ac), gs = typeof ac.gs === "number" ? ac.gs : 0;
+    if(apOnGround(ac)){
+      const r = onRunway(ac.lat, ac.lon);
+      if(r && gs >= 40) return { k:"rwy", rwy:rwyFor(r, crs) };
+      return gs >= 3 ? { k:"taxi" } : { k:"stand" };
+    }
+    const alt = AS.altFt({ alt:ac.alt_baro }), dNm = AS.haversineNm(ac.lat, ac.lon, AP.lat, AP.lon);
+    if(alt == null || alt > 8000 || dNm > 25 || crs === null) return { k:"other" };
+    const toAp = AS.bearingDeg(ac.lat, ac.lon, AP.lat, AP.lon), vr = typeof ac.baro_rate === "number" ? ac.baro_rate : null;
+    let rwy = null; for(const r of apRunways){ rwy = rwy || rwyFor(r, crs); }
+    if(angDiff(crs, toAp) < 35 && (vr === null || vr <= 300)){
+      return { k:"arr", rwy, eta: gs > 60 ? dNm / gs * 60 : null };
+    }
+    if(angDiff(crs, toAp) > 120 && dNm < 15 && (vr === null || vr >= 0)) return { k:"dep", rwy };
+    return { k:"other" };
+  }
 
   function openAirportView(){
     if(!window.L){ AS.setNotice(T.apNoMap); return; }
@@ -752,22 +857,44 @@
     AS.fetchData();
   }
   apBt.addEventListener("click", openAirportView);
-  apView.querySelector("#ap-head").addEventListener("click", e => {
-    const b = e.target.closest("button[data-ap]"); if(!b) return;
-    if(b.dataset.ap === "close") closeAirportView();
-    else if(b.dataset.ap === "wx") toggleWx();
-    else if(b.dataset.ap === "apron"){
-      if(AP.apron) apMap.flyToBounds(AP.apron, { padding:[16, 16], duration:.8 });
-      else apMap.flyTo([AP.lat, AP.lon], 15, { duration:.8 });
+  function setSheet(open){
+    $("ap-sheet").hidden = !open;
+    apView.querySelector('[data-ap="list"]').setAttribute("aria-pressed", String(open));
+    apView.querySelector('[data-ap="list"]').classList.toggle("active", open);
+    if(open) renderMovements();
+  }
+  apView.addEventListener("click", e => {
+    const b = e.target.closest("button[data-ap]");
+    if(b){
+      const k = b.dataset.ap;
+      if(k === "close") closeAirportView();
+      else if(k === "wx") toggleWx();
+      else if(k === "list") setSheet($("ap-sheet").hidden);
+      else if(k === "apron"){
+        if(AP.apron) apMap.flyToBounds(AP.apron, { padding:[16, 16], duration:.8 });
+        else apMap.flyTo([AP.lat, AP.lon], 15, { duration:.8 });
+      }
+      else if(k === "area") apMap.flyTo([AP.lat, AP.lon], 11, { duration:.8 });
+      return;
     }
-    else apMap.flyTo([AP.lat, AP.lon], 11, { duration:.8 });
+    const row = e.target.closest(".ap-row[data-hex]");
+    if(row){
+      const en = apAc[row.dataset.hex]; if(!en) return;
+      setSheet(false);
+      apMap.flyTo(en.marker.getLatLng(), Math.max(apMap.getZoom(), 15), { duration:.6 });
+      setTimeout(() => apShowPopup(row.dataset.hex), 650);
+    }
   });
-  document.addEventListener("keydown", e => { if(apOpen && e.key === "Escape") closeAirportView(); });
+  document.addEventListener("keydown", e => {
+    if(!apOpen || e.key !== "Escape") return;
+    if(!$("ap-sheet").hidden) setSheet(false); else closeAirportView();
+  });
 
   // Regenradar auch in der Flughafenansicht, gesteuert über denselben Schalter wie im Radar
   let apWx = null;
   function applyApWx(){
-    const b = apView.querySelector('[data-ap="wx"]'); if(b) b.setAttribute("aria-pressed", String(wx.on));
+    const b = apView.querySelector('[data-ap="wx"]');
+    if(b){ b.setAttribute("aria-pressed", String(wx.on)); b.classList.toggle("active", wx.on); }
     if(!apMap) return;
     if(wx.on){
       if(!apWx){
@@ -791,7 +918,8 @@
     apMap.getPane("apTrail").style.pointerEvents = "none";
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
       { maxZoom:19, maxNativeZoom:16 }).addTo(apMap);
-    L.rectangle([[-85, -180], [85, 180]], { pane:"apScrim", interactive:false, stroke:false, fillColor:"#0a0d12", fillOpacity:.62 }).addTo(apMap);
+    // Straßenkarte stark gedämpft: der Flughafen soll wie ein freigestellter Plan wirken
+    L.rectangle([[-85, -180], [85, 180]], { pane:"apScrim", interactive:false, stroke:false, fillColor:"#0b0e12", fillOpacity:.8 }).addTo(apMap);
     apMap.on("zoomend", apOnZoom);
     apLoadGeo(); apOnZoom(); applyApWx();
   }
@@ -805,8 +933,11 @@
     catch(e){ AS.setNotice(T.apNoGeo); return; }
     const R = L.canvas({ pane:"apGround", padding:.3 });
     const feats = fc.features || [], by = pred => feats.filter(pred), aw = f => f.properties.aeroway || "";
+    // Gelände des Flughafens etwas heller als die Umgebung
+    L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "aerodrome" && /Polygon/.test(f.geometry.type)) },
+      { renderer:R, interactive:false, style:{ stroke:false, fillColor:"#141920", fillOpacity:.9 } }).addTo(apMap);
     const apronLayer = L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "apron") },
-      { renderer:R, interactive:false, style:{ stroke:false, fillColor:"#1d242d", fillOpacity:1 } }).addTo(apMap);
+      { renderer:R, interactive:false, style:{ stroke:false, fillColor:"#1b222b", fillOpacity:1 } }).addTo(apMap);
     // Startansicht: das Vorfeld bildschirmfüllend
     if(apronLayer.getLayers().length){
       AP.apron = apronLayer.getBounds();
@@ -815,37 +946,38 @@
     const taxi = by(f => (aw(f) === "taxiway" || aw(f) === "taxilane") && f.geometry.type === "LineString");
     for(const f of taxi){
       const body = L.polyline(f.geometry.coordinates.map(c => [c[1], c[0]]),
-        { renderer:R, interactive:false, color:"#262e38", lineCap:"round", lineJoin:"round" }).addTo(apMap);
-      apScaled.push({ layer:body, widthM:parseFloat(f.properties.width) || AP_TAXI_WIDTH, minPx:1.5 });
+        { renderer:R, interactive:false, color:"#2a313b", lineCap:"round", lineJoin:"round" }).addTo(apMap);
+      apScaled.push({ layer:body, widthM:parseFloat(f.properties.width) || AP_TAXI_WIDTH, minPx:2 });
     }
+    // Mittellinien nur noch dezent
     for(const f of taxi) L.polyline(f.geometry.coordinates.map(c => [c[1], c[0]]),
-      { renderer:R, interactive:false, color:"#7d6a35", weight:1, opacity:.8 }).addTo(apMap);
+      { renderer:R, interactive:false, color:"#4a4436", weight:1, opacity:.6 }).addTo(apMap);
     for(const f of by(f => aw(f) === "runway" && f.geometry.type === "LineString")){
       const ll = f.geometry.coordinates.map(c => [c[1], c[0]]);
-      const body = L.polyline(ll, { renderer:R, interactive:false, color:"#38414c", lineCap:"butt" }).addTo(apMap);
-      apScaled.push({ layer:body, widthM:parseFloat(f.properties.width) || 45, minPx:3 });
-      L.polyline(ll, { renderer:R, interactive:false, color:"#9aa6b3", weight:1, dashArray:"10 8", opacity:.7 }).addTo(apMap);
-      if(f.properties.ref && ll.length >= 2){
+      const widthM = parseFloat(f.properties.width) || 45;
+      const body = L.polyline(ll, { renderer:R, interactive:false, color:"#4a5260", lineCap:"butt" }).addTo(apMap);
+      apScaled.push({ layer:body, widthM, minPx:4 });
+      L.polyline(ll, { renderer:R, interactive:false, color:"#d6dde5", weight:1.2, dashArray:"10 8", opacity:.8 }).addTo(apMap);
+      if(ll.length >= 2){
         const a = ll[0], b = ll[ll.length - 1], brg = AS.bearingDeg(a[0], a[1], b[0], b[1]);
-        const n = d => String(((Math.round(d / 10) + 35) % 36) + 1).padStart(2, "0");
+        apRunways.push({ a, b, brg, width:widthM, refA:rwyNum(brg), refB:rwyNum((brg + 180) % 360) });
         // Hinter der Schwelle (etwa 160 m auf der Piste) beschriften
         const at = (p, q, m) => { const d = AS.haversineNm(p[0], p[1], q[0], q[1]) * 1852, t = Math.min(1, m / d);
           return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; };
-        apText(at(a, b, 160), n(brg), "ap-rwy"); apText(at(b, a, 160), n((brg + 180) % 360), "ap-rwy");
+        apText(at(a, b, 160), rwyNum(brg), "ap-rwy"); apText(at(b, a, 160), rwyNum((brg + 180) % 360), "ap-rwy");
       }
     }
     L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "parking_position") },
-      { renderer:R, interactive:false, style:{ color:"#465160", weight:1, fill:false } }).addTo(apMap);
+      { renderer:R, interactive:false, style:{ color:"#2c3542", weight:1, fill:false } }).addTo(apMap);
     L.geoJSON({ type:"FeatureCollection", features:by(f => f.properties.building || aw(f) === "terminal" || aw(f) === "hangar") }, {
       renderer:R, interactive:false,
-      style:f => aw(f) === "terminal" ? { color:"#2f6d96", weight:1, fillColor:"#24313f", fillOpacity:1 }
-              : aw(f) === "hangar" ? { color:"#3a4452", weight:1, fillColor:"#20262e", fillOpacity:1 }
-              : { color:"#353e4a", weight:1, fillColor:"#222831", fillOpacity:1 }
+      style:f => aw(f) === "terminal" || f.properties.building === "terminal" ? { color:"#33404f", weight:1, fillColor:"#26303c", fillOpacity:1 }
+              : { color:"#2b3440", weight:1, fillColor:"#1f262f", fillOpacity:1 }
     }).addTo(apMap);
     for(const f of by(f => aw(f) === "gate" && f.properties.ref && f.geometry.type === "Point")){
       const c = f.geometry.coordinates; apText([c[1], c[0]], f.properties.ref, "ap-gate");
     }
-    for(const f of by(f => f.properties.name && f.geometry.type === "Polygon")){
+    for(const f of by(f => f.properties.name && f.geometry.type === "Polygon" && (aw(f) === "terminal" || f.properties.building))){
       const ring = f.geometry.coordinates[0];
       apText([ring.reduce((s, c) => s + c[1], 0) / ring.length, ring.reduce((s, c) => s + c[0], 0) / ring.length], f.properties.name, "ap-bldg");
     }
@@ -860,7 +992,7 @@
     for(const hex in apAc) apStyleMarker(apAc[hex]);
     if(apOpen) apPoll();   // Zoomwechsel kann den Abfrageradius ändern
   }
-  const apRadiusNm = () => apMap && apMap.getZoom() >= 13.5 ? 4 : 30;
+  const apRadiusNm = () => apMap && apMap.getZoom() >= 13.5 ? 25 : 30;   // Anflüge auch bei Nahansicht erfassen
   async function apPoll(){
     if(!apOpen || apFetching) return;
     apFetching = true;
@@ -882,7 +1014,7 @@
         if(!e){
           e = apAc[ac.hex] = { ac, ts:now, trail:[], marker:null, line:null };
           e.marker = L.marker([ac.lat, ac.lon], { keyboard:false, icon:L.divIcon({ className:"ap-ac", iconSize:[0, 0],
-            html:`<div class="ap-ac-wrap"><svg class="ap-ac-svg" viewBox="-50 -50 100 100"><path d="${AP_PLANE}"/></svg><span class="ap-ac-lbl"></span></div>` }) }).addTo(apMap);
+            html:`<div class="ap-ac-wrap"><svg class="ap-ac-svg" viewBox="-50 -50 100 100"><path d="${AP_PLANE}"/></svg><span class="ap-tag"></span></div>` }) }).addTo(apMap);
           e.marker.on("click", () => apShowPopup(ac.hex));
         }
         const posTs = dataNow - (typeof ac.seen_pos === "number" ? ac.seen_pos : 0) * 1000;
@@ -891,13 +1023,18 @@
         const moved = e.ac && (ac.lat !== e.ac.lat || ac.lon !== e.ac.lon);
         if(e.posTs && (moved ? posTs < e.posTs - 15000 : posTs <= e.posTs)){ e.seenAt = now; continue; }
         e.ac = ac; e.ts = Math.min(posTs, now); e.posTs = Math.max(posTs, e.posTs || 0); e.seenAt = now; e.recvAt = now;
+        e.st = classify(ac);
+        if((e.st.k === "rwy" || e.st.k === "arr" || e.st.k === "dep") && e.st.rwy) apRwyUse = { ref:e.st.rwy, at:now };
         const last = e.trail[e.trail.length - 1];
         if(!last || last[0] !== ac.lat || last[1] !== ac.lon) e.trail.push([ac.lat, ac.lon, e.ts]);
         while(e.trail.length && now - e.trail[0][2] > AP_TRAIL_MS) e.trail.shift();
-        const ll = e.trail.map(q => [q[0], q[1]]), color = apOnGround(ac) ? "#9c8a70" : "#4a9fd4";
-        if(AS.isVehicle(ac)){ apStyleMarker(e); continue; }
-        if(!e.line) e.line = L.polyline(ll, { pane:"apTrail", interactive:false, weight:1.5, opacity:.45, color }).addTo(apMap);
-        else { e.line.setLatLngs(ll); e.line.setStyle({ color }); }
+        // Spur nur für rollende und startende oder landende Flugzeuge, dezent
+        const showTrail = e.st.k === "taxi" || e.st.k === "rwy";
+        if(showTrail){
+          const ll = e.trail.map(q => [q[0], q[1]]);
+          if(!e.line) e.line = L.polyline(ll, { pane:"apTrail", interactive:false, weight:1.5, opacity:.4, color:AP_COL.taxi }).addTo(apMap);
+          else e.line.setLatLngs(ll);
+        } else if(e.line){ apMap.removeLayer(e.line); e.line = null; }
         apStyleMarker(e);
       }
       for(const hex in apAc){
@@ -906,53 +1043,129 @@
           apMap.removeLayer(e.marker); if(e.line) apMap.removeLayer(e.line); delete apAc[hex];
         }
       }
-      let g = 0, a = 0, v = 0;
-      for(const hex in apAc){ const x = apAc[hex].ac; AS.isVehicle(x) ? v++ : apOnGround(x) ? g++ : a++; }
-      $("ap-stat").innerHTML = `${esc(T.apGround)} <b>${g}</b>, ${esc(T.apAir)} <b>${a}</b>, ${v ? `${esc(T.apVeh)} <b>${v}</b>, ` : ""}${new Date(now).toLocaleTimeString(AS.LANG === "de" ? "de-DE" : "en-GB")}`;
-    }catch(e){ $("ap-stat").textContent = T.apNoData + " (" + (e.name === "AbortError" ? T.apTimeout : e.message) + ")"; }
+      apLastOk = now;
+      renderChips(); renderRwyUse();
+      if(!$("ap-sheet").hidden) renderMovements();
+    }catch(e){
+      $("ap-chips").innerHTML = `<span class="ap-err">${esc(T.apNoData + " (" + (e.name === "AbortError" ? T.apTimeout : e.message) + ")")}</span>`;
+    }
     finally{ clearTimeout(timer); apFetching = false; }
+  }
+  function apCounts(){
+    const c = { arr:0, taxi:0, stand:0, veh:0, rwy:0, dep:0 };
+    for(const hex in apAc){ const k = (apAc[hex].st || {}).k; if(k in c) c[k]++; }
+    return c;
+  }
+  function renderChips(){
+    const c = apCounts(), chip = (n, t, col) => `<span class="ap-chip"><b style="color:${col}">${n}</b>${esc(t)}</span>`;
+    const tx = c.taxi + c.rwy;
+    $("ap-chips").innerHTML = chip(c.arr, T.apChipArr(c.arr), "var(--txt-hi)") + chip(tx, T.apChipTaxi(tx), "#9fd0f2") +
+      chip(c.stand, T.apChipStand(c.stand), "var(--txt)") + (c.veh ? chip(c.veh, T.apChipVeh(c.veh), "var(--txt-dim)") : "");
+    $("ap-clock").textContent = new Date().toLocaleTimeString(AS.LANG === "de" ? "de-DE" : "en-GB");
+    $("ap-clock").classList.remove("stale");
+  }
+  function renderRwyUse(){
+    const el = $("ap-rwyuse"), ok = apRwyUse && Date.now() - apRwyUse.at < 30 * 60 * 1000;
+    el.classList.toggle("unknown", !ok);
+    el.lastChild.textContent = ok ? T.apRwyShort(apRwyUse.ref) : T.apRwyUnknown;
+    el.title = ok ? T.apRwy(apRwyUse.ref) : T.apRwyUnknownLong;
+    el.setAttribute("aria-label", el.title);
+    $("ap-sheet-rwy").textContent = ok ? T.apRwyShort(apRwyUse.ref) : "";
+  }
+  // Bewegungsliste: was als Nächstes passiert zuerst
+  function routeHint(e, field){
+    const cs = (e.ac.flight || "").trim(); if(!cs || AS.isVehicle(e.ac)) return "";
+    if(!e.routeAsked){
+      e.routeAsked = true;
+      AS.getRoute({ flight:cs, lat:e.ac.lat, lon:e.ac.lon, alt:e.ac.alt_baro === "ground" ? "ground" : e.ac.alt_baro,
+                    track:e.ac.track, vRate:e.ac.baro_rate }).then(j => { e.route = j; if(!$("ap-sheet").hidden) renderMovements(); });
+    }
+    const rt = e.route && e.route.plausible !== false && e.route.route;
+    const p = rt && rt[field];
+    return p ? (p.city || p.iata || p.icao || "") : "";
+  }
+  function renderMovements(){
+    const groups = { arr:[], dep:[], taxi:[] };
+    let stand = 0, veh = 0;
+    for(const hex in apAc){
+      const e = apAc[hex], k = (e.st || {}).k;
+      if(k === "arr") groups.arr.push(e);
+      else if(k === "dep" || k === "rwy") groups.dep.push(e);
+      else if(k === "taxi") groups.taxi.push(e);
+      else if(k === "stand") stand++;
+      else if(k === "veh") veh++;
+    }
+    groups.arr.sort((a, b) => (a.st.eta ?? 99) - (b.st.eta ?? 99));
+    const typ = e => esc(e.ac.t || "");
+    const row = (e, cls, what, when) => `<button class="ap-row ${cls}" data-hex="${esc(e.ac.hex)}"><span class="cs">${esc((e.ac.flight || "").trim() || e.ac.r || e.ac.hex.toUpperCase())}</span>`+
+      `<span class="ty">${typ(e)}</span><span class="wh">${esc(what)}</span><span class="tm">${esc(when || "")}</span></button>`;
+    let h = "";
+    h += `<span class="ap-sec">${esc(T.apSecArr)}</span>`;
+    h += groups.arr.length ? groups.arr.map(e => {
+      const from = routeHint(e, "orig"), eta = e.st.eta;
+      const what = [e.st.rwy ? T.apLandRwy(e.st.rwy) : T.apLanding, from ? T.apFrom(from) : ""].filter(Boolean).join(", ");
+      return row(e, "arr", what, eta == null ? "" : eta < 1 ? T.apNow : `${Math.round(eta)} min`);
+    }).join("") : `<span class="ap-empty">–</span>`;
+    h += `<span class="ap-sec">${esc(T.apSecDep)}</span>`;
+    h += groups.dep.length ? groups.dep.map(e => {
+      const to = routeHint(e, "dest");
+      const what = [e.st.k === "rwy" ? (e.st.rwy ? T.apOnRwy(e.st.rwy) : T.apRunway) : T.apClimbing, to ? T.apTo(to) : ""].filter(Boolean).join(", ");
+      return row(e, "dep", what, "");
+    }).join("") : `<span class="ap-empty">–</span>`;
+    h += `<span class="ap-sec">${esc(T.apSecTaxi)}</span>`;
+    h += groups.taxi.length ? groups.taxi.map(e => {
+      const to = routeHint(e, "dest"), from = routeHint(e, "orig");
+      return row(e, "taxi", to ? T.apTo(to) : from ? T.apFrom(from) : `${Math.round(e.ac.gs || 0)} kt`, "");
+    }).join("") : `<span class="ap-empty">–</span>`;
+    h += `<span class="ap-sec">${esc(T.apSecStand)}</span><span class="ap-empty">${esc(T.apStandSum(stand, veh))}</span>`;
+    $("ap-list").innerHTML = h;
   }
   function apStyleMarker(e){
     const el = e.marker.getElement(); if(!el) return;
-    const ac = e.ac, ground = apOnGround(ac);
-    const w0 = el.firstChild, svg0 = w0.querySelector(".ap-ac-svg"), lbl0 = w0.querySelector(".ap-ac-lbl");
-    // Bodenfahrzeug: kleines Quadrat statt Flugzeugsilhouette, ohne Spur
-    if(AS.isVehicle(ac)){
-      svg0.style.display = "none";
-      if(!w0.querySelector(".ap-veh")) w0.insertAdjacentHTML("afterbegin", `<span class="ap-veh"></span>`);
-      w0.style.width = w0.style.height = "0px"; w0.style.transform = "";
-      lbl0.style.left = "8px"; lbl0.style.top = "-7px";
-      const vcs = (ac.flight || "").trim();
-      const vsub = typeof ac.gs === "number" && ac.gs >= 3 ? `${Math.round(ac.gs)} kt` : "";
-      lbl0.innerHTML = esc(vcs) + (vsub ? `<small>${esc(vsub)}</small>` : "");
-      if(e.line){ apMap.removeLayer(e.line); e.line = null; }
+    const ac = e.ac, st = e.st || classify(ac);
+    const w = el.firstChild, svg = w.querySelector(".ap-ac-svg"), tag = w.querySelector(".ap-tag");
+    const cs = (ac.flight || "").trim() || ac.r || ac.hex.toUpperCase();
+    // Bodenfahrzeug: kleines Quadrat statt Flugzeugsilhouette, ohne Spur, nur dezente Kennung
+    if(st.k === "veh"){
+      el.style.display = "";
+      svg.style.display = "none";
+      if(!w.querySelector(".ap-veh")) w.insertAdjacentHTML("afterbegin", `<span class="ap-veh"></span>`);
+      w.style.width = w.style.height = "0px"; w.style.transform = "";
+      tag.className = "ap-tag veh"; tag.style.left = "8px"; tag.style.top = "-10px";
+      tag.textContent = (ac.flight || "").trim();
+      tag.hidden = !(ac.flight || "").trim();
       return;
     }
+    // Überflüge in Reiseflughöhe gehören nicht in die Flughafenansicht
+    el.style.display = st.k === "other" ? "none" : "";
+    if(st.k === "other"){ if(e.line){ apMap.removeLayer(e.line); e.line = null; } return; }
+    svg.style.display = "";
+    const ground = apOnGround(ac);
     const span = AP_SPAN[(ac.category || "").toUpperCase()] || 34;
-    const px = Math.round(Math.max(ground ? 14 : 18, Math.min(120, span / apMpp())));
-    const hdg = typeof ac.true_heading === "number" && ground ? ac.true_heading : (typeof ac.track === "number" ? ac.track : 0);
-    const w = el.firstChild, svg = w.querySelector(".ap-ac-svg"), lbl = w.querySelector(".ap-ac-lbl");
+    const px = Math.round(Math.max(ground ? 20 : 24, Math.min(120, span / apMpp())));
+    const hdg = typeof ac.true_heading === "number" && ground ? ac.true_heading : (apCourse(ac) ?? 0);
     w.style.width = w.style.height = px + "px"; w.style.transform = `translate(${-px / 2}px, ${-px / 2}px)`;
     svg.setAttribute("width", px); svg.setAttribute("height", px); svg.style.transform = `rotate(${hdg}deg)`;
     const path = svg.firstChild;
-    path.setAttribute("fill", ground ? "#9c8a70" : apAltColor(ac.alt_baro));
-    path.setAttribute("stroke", "#0a0d12"); path.setAttribute("stroke-width", "3");
-    lbl.style.left = (px * .75) + "px"; lbl.style.top = (px * .15) + "px";
-    const cs = (ac.flight || "").trim() || ac.r || ac.hex.toUpperCase();
-    const sub = ground ? (typeof ac.gs === "number" && ac.gs >= 3 ? `${Math.round(ac.gs)} kt` : "")
-      : `${apFmtAlt(ac.alt_baro)}${typeof ac.baro_rate === "number" && Math.abs(ac.baro_rate) >= 300 ? (ac.baro_rate > 0 ? " ↑" : " ↓") : ""}`;
-    lbl.innerHTML = esc(cs) + (sub ? `<small>${esc(sub)}</small>` : "");
+    const col = st.k === "stand" ? AP_COL.stand : st.k === "taxi" ? AP_COL.taxi : st.k === "rwy" ? AP_COL.rwy : AP_COL.air;
+    path.setAttribute("fill", col);
+    path.setAttribute("stroke", "#0a0d12"); path.setAttribute("stroke-width", "4");
+    const cls = st.k === "stand" ? "stand" : st.k === "taxi" ? "taxi" : st.k === "rwy" ? "rwy" : "air";
+    tag.className = "ap-tag " + cls;
+    tag.style.left = (px * .7) + "px"; tag.style.top = (px * .5 - 10) + "px";
+    tag.innerHTML = esc(cs) + (ac.t ? `<small>${esc(ac.t)}</small>` : "");
+    tag.hidden = false;
   }
   // Zwischen den Abfragen mit Geschwindigkeit und Kurs weiterrechnen, höchstens 12 s
   function apAnimate(){
     if(!apOpen) return;
     const now = Date.now();
+    if(apLastOk && now - apLastOk > 10000) $("ap-clock").classList.add("stale");
     for(const hex in apAc){
       const e = apAc[hex], ac = e.ac;
       // Am Boden fehlt oft der Kurs (dann nur die Ausrichtung des Flugzeugs) oder das Tempo ist sehr klein.
-      // Dann nicht hochrechnen, aber immer die zuletzt gemeldete Position zeigen. Früher blieb das Symbol in
-      // diesen Fällen an der allerersten Position stehen, obwohl neue Meldungen kamen.
-      const crs = typeof ac.track === "number" ? ac.track : (typeof ac.true_heading === "number" ? ac.true_heading : null);
+      // Dann nicht hochrechnen, aber immer die zuletzt gemeldete Position zeigen.
+      const crs = apCourse(ac);
       let pos = [ac.lat, ac.lon];
       if(typeof ac.gs === "number" && ac.gs >= 3 && crs !== null){
         const dNm = ac.gs * Math.min(12, (now - e.ts) / 1000) / 3600, tr = crs * Math.PI / 180;
@@ -972,8 +1185,8 @@
       airline ? `<div>${esc(airline)}</div>` : "",
       veh ? `<div>${esc(T.apVehicle)}</div>` : `<div class="mut">${esc([type, ac.r].filter(Boolean).join(", "))}</div>`,
       `<div class="mut">${esc(apFmtAlt(ac.alt_baro))}${typeof ac.gs === "number" ? ", " + Math.round(ac.gs) + " kt" : ""}</div>`,
-      // Kennung und ADS-B-Kategorie: zeigt z. B., ob es ein Bodenfahrzeug ist (C1 bis C3, Kennung mit „~“)
       `<div class="mut">${esc(T.apPosAge(Math.round((typeof ac.seen_pos === "number" ? ac.seen_pos : 0) + (Date.now() - (e.recvAt || Date.now())) / 1000)))}</div>`,
+      // Kennung und ADS-B-Kategorie: zeigt z. B., ob es ein Bodenfahrzeug ist (C1 bis C3, Kennung mit „~“)
       `<div class="mut">${esc(T.apHex)} ${esc(hex.toUpperCase())}${hex.startsWith("~") ? " (" + esc(T.apNoIcao) + ")" : ""}</div>`,
       ac.category ? `<div class="mut">${esc(T.apCat)} ${esc(ac.category)}${T.cats[ac.category] ? ", " + esc(T.cats[ac.category]) : ""}</div>` : "",
       veh ? "" : `<div class="rt" id="ap-rt-${esc(hex)}">${cs ? T.apRoute : ""}</div>`
