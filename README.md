@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **3.1** (steht unten rechts in der App).
+Aktuelle Version: **3.2** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -51,7 +51,7 @@ Es gibt keinen Build-Schritt. Schriften, Ortsnamen, Kartenbibliothek und three.j
 2. Unter **Settings → Pages**: *Deploy from a branch*, dann `main` und `/ (root)` wählen.
 3. Aufruf unter der eigenen Domain [adsb-radar.de](https://adsb-radar.de).
 
-Nach dem Hochladen kann GitHub Pages bis zu zehn Minuten die alte Fassung ausliefern. Ob die neue angekommen ist, zeigt die Versionsnummer unten rechts; die installierte App auf dem iPhone muss dafür einmal ganz geschlossen und neu geöffnet werden.
+Nach dem Hochladen kann GitHub Pages bis zu zehn Minuten die alte Fassung ausliefern. Ob die neue angekommen ist, zeigt die Versionsnummer unten rechts (im Owner-Bereich zusätzlich die Version von `owner.js`, die mit Versionszusatz geladen wird); die installierte App auf dem iPhone muss dafür einmal ganz geschlossen und neu geöffnet werden.
 
 ### Als App auf dem Smartphone
 
@@ -83,7 +83,7 @@ Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "3.1";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.2";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 

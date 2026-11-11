@@ -1106,7 +1106,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 <script>
 /* ============ Konfiguration ============ */
-const APP_VERSION = "3.1";   // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.2";   // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";
 const LS = {
   get:(k,d)=>{try{const v=localStorage.getItem("asl_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -3122,7 +3122,7 @@ $("clock").addEventListener("click", ()=>{
 });
 if(LS.get("ownerToken", null)){
   const s=document.createElement("script");
-  s.src="owner.js";
+  s.src="owner.js?v="+APP_VERSION;   // Versionszusatz: sonst liefert der Zwischenspeicher eine alte owner.js zur neuen Seite
   document.body.appendChild(s);
 }
 </script>
