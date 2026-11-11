@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **3.0** (steht unten rechts in der App).
+Aktuelle Version: **3.1** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -83,7 +83,7 @@ Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "3.0";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.1";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 

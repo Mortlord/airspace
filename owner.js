@@ -938,11 +938,6 @@
       { renderer:R, interactive:false, style:{ stroke:false, fillColor:"#141920", fillOpacity:.9 } }).addTo(apMap);
     const apronLayer = L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "apron") },
       { renderer:R, interactive:false, style:{ stroke:false, fillColor:"#1b222b", fillOpacity:1 } }).addTo(apMap);
-    // Startansicht: das Vorfeld bildschirmfüllend
-    if(apronLayer.getLayers().length){
-      AP.apron = apronLayer.getBounds();
-      apMap.fitBounds(AP.apron, { padding:[16, 16] });
-    }
     const taxi = by(f => (aw(f) === "taxiway" || aw(f) === "taxilane") && f.geometry.type === "LineString");
     for(const f of taxi){
       const body = L.polyline(f.geometry.coordinates.map(c => [c[1], c[0]]),
@@ -952,20 +947,51 @@
     // Mittellinien nur noch dezent
     for(const f of taxi) L.polyline(f.geometry.coordinates.map(c => [c[1], c[0]]),
       { renderer:R, interactive:false, color:"#4a4436", weight:1, opacity:.6 }).addTo(apMap);
-    for(const f of by(f => aw(f) === "runway" && f.geometry.type === "LineString")){
+    // Pisten: In OpenStreetMap ist eine Piste oft in mehrere Abschnitte geteilt. Gezeichnet werden alle
+    // Abschnitte, beschriftet und für die Auswertung genutzt wird aber jede Piste nur einmal, mit ihren
+    // äußersten Enden. Sonst stünden Kennungen wie „25“ mitten auf der Piste.
+    const rwFeats = by(f => aw(f) === "runway" && f.geometry.type === "LineString");
+    const rwGroups = new Map();
+    for(const f of rwFeats){
       const ll = f.geometry.coordinates.map(c => [c[1], c[0]]);
       const widthM = parseFloat(f.properties.width) || 45;
       const body = L.polyline(ll, { renderer:R, interactive:false, color:"#4a5260", lineCap:"butt" }).addTo(apMap);
       apScaled.push({ layer:body, widthM, minPx:4 });
       L.polyline(ll, { renderer:R, interactive:false, color:"#d6dde5", weight:1.2, dashArray:"10 8", opacity:.8 }).addTo(apMap);
-      if(ll.length >= 2){
-        const a = ll[0], b = ll[ll.length - 1], brg = AS.bearingDeg(a[0], a[1], b[0], b[1]);
-        apRunways.push({ a, b, brg, width:widthM, refA:rwyNum(brg), refB:rwyNum((brg + 180) % 360) });
-        // Hinter der Schwelle (etwa 160 m auf der Piste) beschriften
-        const at = (p, q, m) => { const d = AS.haversineNm(p[0], p[1], q[0], q[1]) * 1852, t = Math.min(1, m / d);
-          return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; };
-        apText(at(a, b, 160), rwyNum(brg), "ap-rwy"); apText(at(b, a, 160), rwyNum((brg + 180) % 360), "ap-rwy");
+      if(ll.length < 2) continue;
+      const brg0 = AS.bearingDeg(ll[0][0], ll[0][1], ll[ll.length - 1][0], ll[ll.length - 1][1]);
+      const key = f.properties.ref || ("~" + Math.round(((brg0 % 180) + 180) % 180 / 10));   // Abschnitte derselben Piste
+      if(!rwGroups.has(key)) rwGroups.set(key, { pts:[], width:widthM });
+      const g = rwGroups.get(key); g.pts.push(...ll); g.width = Math.max(g.width, widthM);
+    }
+    for(const g of rwGroups.values()){
+      // Achse: die beiden am weitesten voneinander entfernten Punkte der Piste
+      let a = g.pts[0], b = g.pts[0], best = -1;
+      for(const p of g.pts) for(const q of g.pts){
+        const d = (p[0] - q[0]) ** 2 + ((p[1] - q[1]) * Math.cos(p[0] * Math.PI / 180)) ** 2;
+        if(d > best){ best = d; a = p; b = q; }
       }
+      // Einheitlich so ausrichten, dass a das Ende mit der kleineren Kennung ist (z. B. 07 vor 25)
+      let brg = AS.bearingDeg(a[0], a[1], b[0], b[1]);
+      if(brg >= 180){ [a, b] = [b, a]; brg = (brg + 180) % 360; }
+      apRunways.push({ a, b, brg, width:g.width, refA:rwyNum(brg), refB:rwyNum((brg + 180) % 360) });
+      // Hinter der Schwelle (etwa 160 m auf der Piste) beschriften
+      const at = (p, q, m) => { const d = AS.haversineNm(p[0], p[1], q[0], q[1]) * 1852, t = Math.min(1, m / d);
+        return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; };
+      apText(at(a, b, 160), rwyNum(brg), "ap-rwy"); apText(at(b, a, 160), rwyNum((brg + 180) % 360), "ap-rwy");
+    }
+    // Startansicht: der ganze Flugplatz entlang der Piste. „Vorfeld“ zeigt nur die Vorfelder in Pistennähe;
+    // weiter entfernte Flächen, die OpenStreetMap ebenfalls als Vorfeld führt, zählen nicht mit.
+    if(apRunways.length){
+      const all = apRunways.flatMap(r => [r.a, r.b]);
+      const field = L.latLngBounds(all).pad(0.08);
+      const mid = field.getCenter();
+      const near = apronLayer.getLayers().filter(l => l.getBounds().getCenter().distanceTo(mid) < 2500);
+      if(near.length) AP.apron = near.reduce((bb, l) => bb.extend(l.getBounds()), L.latLngBounds(near[0].getBounds().getSouthWest(), near[0].getBounds().getNorthEast()));
+      apMap.fitBounds(field, { padding:[12, 12] });
+    } else if(apronLayer.getLayers().length){
+      AP.apron = apronLayer.getBounds();
+      apMap.fitBounds(AP.apron, { padding:[16, 16] });
     }
     L.geoJSON({ type:"FeatureCollection", features:by(f => aw(f) === "parking_position") },
       { renderer:R, interactive:false, style:{ color:"#2c3542", weight:1, fill:false } }).addTo(apMap);
