@@ -19,7 +19,7 @@
 
   const BASE = AS.BASE, $ = AS.$, esc = AS.esc;
   // Eigene Versionsnummer, unten neben der App-Version angezeigt: so sieht man, ob wirklich die neue owner.js läuft
-  const OWNER_VERSION = "3.2";
+  const OWNER_VERSION = "3.3";
   if($("appVersion")) $("appVersion").textContent += ` · Owner ${OWNER_VERSION}`;
   const ALERT_NM = 20;          // Alarmradius, fest wie in der bisherigen privaten App
   const SERVER_RADIUS = 40;     // Abfrageradius des Servers für die Alarme (wie bisher)
@@ -962,10 +962,23 @@
       apScaled.push({ layer:body, widthM, minPx:4 });
       L.polyline(ll, { renderer:R, interactive:false, color:"#d6dde5", weight:1.2, dashArray:"10 8", opacity:.8 }).addTo(apMap);
       if(ll.length < 2) continue;
-      const brg0 = AS.bearingDeg(ll[0][0], ll[0][1], ll[ll.length - 1][0], ll[ll.length - 1][1]);
-      const key = f.properties.ref || ("~" + Math.round(((brg0 % 180) + 180) % 180 / 10));   // Abschnitte derselben Piste
-      if(!rwGroups.has(key)) rwGroups.set(key, { pts:[], width:widthM });
-      const g = rwGroups.get(key); g.pts.push(...ll); g.width = Math.max(g.width, widthM);
+      // Abschnitte derselben Piste erkennen, unabhängig von ihrer Kennung: gleiche Richtung (bis 5°) und
+      // höchstens 80 m seitlich von der Achse eines schon bekannten Abschnitts. Kennungen sind in
+      // OpenStreetMap nicht verlässlich; Verlängerungen oder Schwellenbereiche tragen oft keine oder eine andere.
+      const p0 = ll[0], p1 = ll[ll.length - 1], mid = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
+      const brg0 = AS.bearingDeg(p0[0], p0[1], p1[0], p1[1]);
+      let g = null;
+      for(const cand of rwGroups.values()){
+        const d = Math.abs(((brg0 - cand.brg) % 180 + 180) % 180);
+        if(Math.min(d, 180 - d) > 5) continue;
+        // seitlicher Abstand der Abschnittsmitte zur Achse des Kandidaten (lokal eben, in Metern)
+        const k = Math.cos(cand.a[0] * Math.PI / 180) * 111320, m = 110540;
+        const bx = (cand.b[1] - cand.a[1]) * k, by = (cand.b[0] - cand.a[0]) * m;
+        const px = (mid[1] - cand.a[1]) * k, py = (mid[0] - cand.a[0]) * m;
+        if(Math.abs(bx * py - by * px) / Math.hypot(bx, by) <= 80){ g = cand; break; }
+      }
+      if(!g){ g = { pts:[], width:widthM, a:p0, b:p1, brg:brg0 }; rwGroups.set(rwGroups.size, g); }
+      g.pts.push(...ll); g.width = Math.max(g.width, widthM);
     }
     for(const g of rwGroups.values()){
       // Achse: die beiden am weitesten voneinander entfernten Punkte der Piste
