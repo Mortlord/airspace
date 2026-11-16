@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **3.3** (steht unten rechts in der App).
+Aktuelle Version: **3.4** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -83,7 +83,7 @@ Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "3.3";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.4";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 
@@ -95,12 +95,23 @@ Im `localStorage` des Browsers (Präfix `asl_`) liegen Umkreis, Ansicht (Radar o
 |----------|-------|
 | `GET /aircraft?lat=&lon=&radius=` | Flugzeuge im Umkreis, Abruf alle 2 Sekunden |
 | `GET /callsign?cs=` | Weltweite Suche und Verfolgung eines Callsigns oder einer IATA-Flugnummer (Zuordnung aus den VRS-Stammdaten), nur exakte Treffer mit Position |
-| `GET /route?callsign=&lat=&lon=&alt=&trk=&vr=` | Abflug- und Zielflughafen, serverseitig 14 Tage zwischengespeichert. Mit Position, Höhe, Kurs und Steigrate prüft der Server, ob die Route plausibel ist (Flughafenkoordinaten aus OurAirports): seitlicher Abstand zum Großkreis, Lage entlang der Strecke, Flugrichtung im Reiseflug sowie Höhe und Richtung nahe Start und Ziel. Bei unplausiblen Routen holt er eine Zweitmeinung von AeroDataBox (Tagesbudget per `ADB_CHECK_DAILY_MAX`, Standard 40); sonst zeigt die App „Route unklar“ |
+| `GET /route?callsign=&lat=&lon=&alt=&trk=&vr=` | Abflug- und Zielflughafen, serverseitig 14 Tage zwischengespeichert. Mit Position, Höhe, Kurs und Steigrate prüft der Server, ob die Route plausibel ist (Flughafenkoordinaten aus OurAirports): seitlicher Abstand zum Großkreis, Lage entlang der Strecke, Flugrichtung im Reiseflug sowie Höhe und Richtung nahe Start und Ziel. Bei unplausiblen Routen holt er eine Zweitmeinung von AeroDataBox, aber nur, wenn er das Flugzeug selbst in seinen Positionsdaten hat (dann zählt seine Position, nicht die des Clients) (Tagesbudget per `ADB_CHECK_DAILY_MAX`, Standard 40); sonst zeigt die App „Route unklar“ |
 | `GET /metar?lat=&lon=&radius=` | Wettermeldungen der Flughäfen im Umkreis (Aviation Weather Center), Position auf etwa 1 km gerundet |
 | `GET /airlines`, `GET /aircrafttypes` | Namen für Airline-Kürzel und Mustercodes |
 | `GET /feeder`, `GET /fixpoint` | Owner: Daten vom Heim-Pi bzw. um den Fixpunkt (mit Owner-Code) |
 | `GET /favorites`, `POST /update` | Owner: Favoriten lesen und speichern, Standort für die Alarme melden |
-| `GET /coverage` | Owner: Empfangsreichweite des Heim-Pi |
+| `GET /coverage`, `POST /coverage/reset` | Owner: Empfangsreichweite des Heim-Pi |
+
+## Sicherheit (Server ab 3.4)
+
+- **Fail-closed:** Fehlt auf Railway eine Variable, sperrt der Server, statt alles durchzulassen. Beim Start steht im Log, was fehlt.
+- **Nur über Cloudflare:** Alle App-Endpunkte verlangen den Header `X-Origin-Auth` mit `CF_SECRET` (setzt Cloudflare per Transform Rule). `CF_ENFORCE_MODE` steht standardmäßig auf `block`; `warn` nur zum Testen.
+- **Owner-Code:** nur im Header `X-Auth-Token`, gültig nur für `OWNER_CHAT_ID`. Alle Owner-Endpunkte haben ein gemeinsames Rate-Limit von 120 Anfragen pro Minute und IP. `/neuercode` im Telegram-Bot stellt einen neuen Code aus und sperrt den alten sofort.
+- **Telegram-Webhook:** nimmt nur Nachrichten mit `WEBHOOK_SECRET` an. Der Server registriert den Webhook beim Start selbst bei Telegram (Adresse aus `PUBLIC_HOST`); abschaltbar mit `WEBHOOK_AUTO_REGISTER=0`.
+- **Admin-Endpunkte** (`/poll`, `/setup-webhook`, `/debug-userstate`): Secret nur im Header `X-Admin-Secret`. Übergangsweise nimmt `/poll` noch `?key=` an (mit Warnung im Log); `ALLOW_POLL_QUERY_KEY=0` schaltet das ab.
+- **Rate-Limits** zählen pro echter Client-IP (`CF-Connecting-IP`), nicht pro Cloudflare-Knoten.
+
+Benötigte Railway-Variablen: `CF_SECRET`, `WEBHOOK_SECRET`, `PUBLIC_HOST`, `ADMIN_SECRET`, `OWNER_CHAT_ID`, `TELEGRAM_BOT_TOKEN`, `STATE_ENC_KEY`.
 
 Der Server bezieht die Positionen von adsb.fi, ersatzweise von adsb.lol, und die Routen von adsbdb bzw. AeroDataBox. Entfernung und Richtung berechnet die App immer selbst vom Standort aus.
 
