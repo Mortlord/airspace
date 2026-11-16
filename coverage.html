@@ -179,10 +179,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 const PUSH_SERVER = 'https://api.adsb-radar.de';
 const NM_KM = 1.852;
 const FT_KM = 0.0003048;
-// Owner-Code von AirSpace (asl_ownerToken, als JSON gespeichert); Fallback für die frühere private App
+// Owner-Code von AirSpace (asl_ownerToken, als JSON gespeichert)
 const token = (() => {
-  try { const v = localStorage.getItem('asl_ownerToken'); if (v) return JSON.parse(v) || ''; } catch (e) {}
-  return localStorage.getItem('fav_token') || '';
+  try { const v = localStorage.getItem('asl_ownerToken'); if (v) { const t = JSON.parse(v); return typeof t === 'string' ? t : ''; } } catch (e) {}
+  return '';
 })();
 
 const $ = id => document.getElementById(id);
@@ -563,7 +563,7 @@ function setState(cls, text) { $('st-dot').className = 'dot ' + cls; $('st-state
 async function load() {
   if (!token) {
     setState('bad', 'Kein Zugang');
-    showMsg('Kein Aktivierungscode gespeichert', 'Diese Seite ist nur für den Betreiber. Speichere zuerst im Radar unter Favoriten deinen Aktivierungscode und öffne die Seite dann erneut.');
+    showMsg('Kein Aktivierungscode gespeichert', 'Diese Seite ist nur für den Betreiber. Melde dich zuerst in AirSpace an (adsb-radar.de/#owner) und öffne die Seite dann erneut.');
     return;
   }
   let d;
