@@ -19,7 +19,7 @@
 
   const BASE = AS.BASE, $ = AS.$, esc = AS.esc;
   // Eigene Versionsnummer, unten neben der App-Version angezeigt: so sieht man, ob wirklich die neue owner.js läuft
-  const OWNER_VERSION = "3.5";
+  const OWNER_VERSION = "3.6";
   if($("appVersion")) $("appVersion").textContent += ` · Owner ${OWNER_VERSION}`;
   const ALERT_NM = 20;          // Alarmradius, fest wie in der bisherigen privaten App
   const SERVER_RADIUS = 40;     // Abfrageradius des Servers für die Alarme (wie bisher)

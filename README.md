@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **3.5** (steht unten rechts in der App).
+Aktuelle Version: **3.6** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -83,7 +83,7 @@ Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "3.5";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.6";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 
@@ -95,7 +95,7 @@ Im `localStorage` des Browsers (Präfix `asl_`) liegen Umkreis, Ansicht (Radar o
 |----------|-------|
 | `GET /aircraft?lat=&lon=&radius=` | Flugzeuge im Umkreis, Abruf alle 2 Sekunden |
 | `GET /callsign?cs=` | Weltweite Suche und Verfolgung eines Callsigns oder einer IATA-Flugnummer (Zuordnung aus den VRS-Stammdaten), nur exakte Treffer mit Position |
-| `GET /route?callsign=&lat=&lon=&alt=&trk=&vr=` | Abflug- und Zielflughafen, serverseitig 14 Tage zwischengespeichert. Mit Position, Höhe, Kurs und Steigrate prüft der Server, ob die Route plausibel ist (Flughafenkoordinaten aus OurAirports): seitlicher Abstand zum Großkreis, Lage entlang der Strecke, Flugrichtung im Reiseflug sowie Höhe und Richtung nahe Start und Ziel. Bei unplausiblen Routen holt er eine Zweitmeinung von AeroDataBox, aber nur, wenn er das Flugzeug selbst in seinen Positionsdaten hat (dann zählt seine Position, nicht die des Clients) (Tagesbudget per `ADB_CHECK_DAILY_MAX`, Standard 40); sonst zeigt die App „Route unklar“ |
+| `GET /route?callsign=&lat=&lon=&alt=&trk=&vr=` | Abflug- und Zielflughafen, serverseitig 14 Tage zwischengespeichert. Mit Position, Höhe, Kurs und Steigrate prüft der Server, ob die Route plausibel ist (Flughafenkoordinaten aus OurAirports): seitlicher Abstand zum Großkreis, Lage entlang der Strecke, Flugrichtung im Reiseflug sowie Höhe und Richtung nahe Start und Ziel. Bei unplausiblen Routen holt er eine Zweitmeinung von AeroDataBox, aber nur, wenn er das Flugzeug selbst in seinen Positionsdaten oder in denen des Heim-Pi hat (dann zählt seine Position, nicht die des Clients). Kennt keine Quelle eine Route, fragt er bei Airline-Flügen, die er selbst sieht, AeroDataBox als letzte Quelle (Tagesbudget per `ADB_FILL_DAILY_MAX`, Standard 30). Zuerst wird das monatliche RapidAPI-Kontingent genutzt, danach die Feeder-Credits (Tagesbudget per `ADB_CHECK_DAILY_MAX`, Standard 40); sonst zeigt die App „Route unklar“ |
 | `GET /metar?lat=&lon=&radius=` | Wettermeldungen der Flughäfen im Umkreis (Aviation Weather Center), Position auf etwa 1 km gerundet |
 | `GET /airlines`, `GET /aircrafttypes` | Namen für Airline-Kürzel und Mustercodes |
 | `GET /feeder`, `GET /fixpoint` | Owner: Daten vom Heim-Pi bzw. um den Fixpunkt (mit Owner-Code) |
