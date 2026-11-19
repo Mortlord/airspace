@@ -19,7 +19,7 @@
 
   const BASE = AS.BASE, $ = AS.$, esc = AS.esc;
   // Eigene Versionsnummer, unten neben der App-Version angezeigt: so sieht man, ob wirklich die neue owner.js läuft
-  const OWNER_VERSION = "3.6";
+  const OWNER_VERSION = "3.7";
   if($("appVersion")) $("appVersion").textContent += ` · Owner ${OWNER_VERSION}`;
   const ALERT_NM = 20;          // Alarmradius, fest wie in der bisherigen privaten App
   const SERVER_RADIUS = 40;     // Abfrageradius des Servers für die Alarme (wie bisher)
@@ -29,7 +29,9 @@
   /* ============ Texte (Deutsch / Englisch wie der Rest der App) ============ */
   const T = {
     de:{ src:"Datenquelle", live:"Standort", liveSub:"GPS dieses Geräts", feeder:"Heim-Pi", feederSub:"Eigener Empfänger",
-         fix:"Fixpunkt", fixSub:"Feste Position", off:"nicht erreichbar", denied:"Der Server hat den Owner-Code abgelehnt. Mit fünfmal Tippen auf die Uhr neu anmelden.",
+         fix:"Fixpunkt", fixSub:"Feste Position", free:"Frei", freeSub:"Radar ziehen oder Ort suchen",
+         searchPh:"Callsign oder Ort suchen", placeAt:(n,c)=>`Radar über ${n} (${c})`, placeLoading:"Ortsliste wird geladen …",
+         placeFail:"Ortsliste nicht verfügbar (places-world.tsv fehlt?)", off:"nicht erreichbar", denied:"Der Server hat den Owner-Code abgelehnt. Mit fünfmal Tippen auf die Uhr neu anmelden.",
          mine:"Nur für dich", favs:"Favoriten", favPh:"+ Präfix", favAdd:"Favorit hinzufügen", favNote:`Telegram meldet Favoriten im Umkreis von ${ALERT_NM} NM um deinen Standort.`,
          favLoading:"Wird geladen …", favNone:"Noch keine Favoriten.", favErr:"Favoriten gerade nicht abrufbar.", remove:f=>`${f} entfernen`,
          noGps:"Ohne Standort kann ich die Favoriten nicht speichern.", saveErr:"Favoriten konnten nicht gespeichert werden. Bitte später erneut versuchen.",
@@ -51,7 +53,9 @@
                C1:"Einsatzfahrzeug",C2:"Servicefahrzeug",C3:"Hindernis"},
          apNoMap:"Karte nicht verfügbar", apNoGeo:"Flughafendaten nicht geladen (airport-edds.json fehlt?)", apRoute:"Route …", apRouteNone:"Route unbekannt" },
     en:{ src:"Data source", live:"Location", liveSub:"GPS of this device", feeder:"Home Pi", feederSub:"Own receiver",
-         fix:"Fixed point", fixSub:"Fixed position", off:"not reachable", denied:"The server rejected the owner code. Tap the clock five times to sign in again.",
+         fix:"Fixed point", fixSub:"Fixed position", free:"Free", freeSub:"Drag the radar or search a place",
+         searchPh:"Search callsign or place", placeAt:(n,c)=>`Radar over ${n} (${c})`, placeLoading:"Loading place list …",
+         placeFail:"Place list not available (places-world.tsv missing?)", off:"not reachable", denied:"The server rejected the owner code. Tap the clock five times to sign in again.",
          mine:"Only for you", favs:"Favourites", favPh:"+ prefix", favAdd:"Add favourite", favNote:`Telegram reports favourites within ${ALERT_NM} NM of your location.`,
          favLoading:"Loading …", favNone:"No favourites yet.", favErr:"Favourites currently unavailable.", remove:f=>`Remove ${f}`,
          noGps:"Without your location the favourites cannot be saved.", saveErr:"Favourites could not be saved. Please try again later.",
@@ -136,17 +140,22 @@
     feeder:   { id:"feeder",   label:T.feeder, center:null,
                 url:()=>`${BASE}/feeder`, headers:hdr },
     fixpoint: { id:"fixpoint", label:T.fix,    center:null,
-                url:()=>`${BASE}/fixpoint?radius=${AS.fetchRadius()}`, headers:hdr }
+                url:()=>`${BASE}/fixpoint?radius=${AS.fetchRadius()}`, headers:hdr },
+    // Frei verschiebbare Mitte: öffentliche Daten, darum ohne Owner-Header
+    free:     { id:"free",     label:T.free,   center:AS.LS.get("ownerFree", null),
+                url:()=>{ const c = SOURCES.free.center;
+                          return `${BASE}/aircraft?lat=${c.lat.toFixed(3)}&lon=${c.lon.toFixed(3)}&radius=${AS.fetchRadius()}`; } }
   };
-  const SRC_IDS = ["live", "feeder", "fixpoint"];
-  const srcName = id => id === "feeder" ? T.feeder : id === "fixpoint" ? T.fix : T.live;
+  const SRC_IDS = ["live", "feeder", "fixpoint", "free"];
+  const srcName = id => id === "feeder" ? T.feeder : id === "fixpoint" ? T.fix : id === "free" ? T.free : T.live;
+  const srcSub  = id => id === "live" ? T.liveSub : id === "feeder" ? T.feederSub : id === "free" ? T.freeSub : T.fixSub;
   $("srcSlot").innerHTML = `<div class="src-wrap">
       <button class="src-chip" id="srcChip" aria-haspopup="true" aria-expanded="false" aria-controls="srcMenu">
         <span class="dot" aria-hidden="true"></span><span id="srcName">${esc(T.live)}</span>${ICON.chev}</button>
       <div class="src-menu" id="srcMenu" role="menu" aria-label="${esc(T.src)}" hidden>
         <span class="pop-lbl">${esc(T.src)}</span>
-        ${SRC_IDS.map(id => `<button class="src-opt" role="menuitemradio" aria-checked="false" data-src="${id}"${id === "live" ? "" : " disabled"}>
-          <span class="rad" aria-hidden="true"></span><span>${esc(srcName(id))}<small id="srcSub-${id}">${esc(id === "live" ? T.liveSub : id === "feeder" ? T.feederSub : T.fixSub)}</small></span></button>`).join("")}
+        ${SRC_IDS.map(id => `<button class="src-opt" role="menuitemradio" aria-checked="false" data-src="${id}"${id === "live" || id === "free" ? "" : " disabled"}>
+          <span class="rad" aria-hidden="true"></span><span>${esc(srcName(id))}<small id="srcSub-${id}">${esc(srcSub(id))}</small></span></button>`).join("")}
       </div></div>`;
   let denied = 0;
   function setSrcMenu(open){ $("srcMenu").hidden = !open; $("srcChip").setAttribute("aria-expanded", String(open)); }
@@ -172,7 +181,10 @@
 
   function selectSource(id){
     const src = SOURCES[id];
-    if(!src || !src.center) id = "live";
+    // „Frei“ ohne gemerkten Punkt startet dort, wo das Radar gerade steht
+    if(id === "free" && src && !validPos(src.center)) src.center = AS.state.center ? { ...AS.state.center } : null;
+    if(!src || !validPos(src.center)) id = "live";
+    $("radar").style.touchAction = id === "free" ? "none" : "";   // Ziehen statt Seite scrollen
     AS.LS.set("ownerSource", id);
     $("srcName").textContent = srcName(id);
     for(const b of $("srcMenu").querySelectorAll(".src-opt")) b.setAttribute("aria-checked", String(b.dataset.src === id));
@@ -191,6 +203,102 @@
     if(denied >= 2) AS.setNotice(T.denied, 12000);
     selectSource(AS.LS.get("ownerSource", "live"));
   }
+
+  /* ============ Quelle „Frei“: Radar ziehen und Orte weltweit suchen ============ */
+  function validPos(p){ return !!p && Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 85 && Math.abs(p.lon) <= 180; }
+  // Zielpunkt von (lat, lon) aus nach d NM in Richtung brg (Grad), Großkreis
+  function destPoint(p, dNm, brg){
+    const R = 3440.065, d = dNm / R, b = brg * Math.PI / 180;
+    const la1 = p.lat * Math.PI / 180, lo1 = p.lon * Math.PI / 180;
+    const la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(b));
+    const lo2 = lo1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(la1), Math.cos(d) - Math.sin(la1) * Math.sin(la2));
+    let lat = la2 * 180 / Math.PI, lon = ((lo2 * 180 / Math.PI) + 540) % 360 - 180;
+    lat = Math.max(-85, Math.min(85, lat));
+    return { lat, lon };
+  }
+  function goFree(pos){
+    SOURCES.free.center = { lat:pos.lat, lon:pos.lon };
+    AS.LS.set("ownerFree", SOURCES.free.center);
+    if(AS.source && AS.source.id === "free" && !AS.state.track) AS.moveCenter(SOURCES.free.center, true);
+    else selectSource("free");
+  }
+
+  // Ziehgeste: Finger oder Maus verschiebt die Mitte. Während des Ziehens gleiten Karte und
+  // Flugzeuge mit; neu geladen wird erst beim Loslassen (schont das Kontingent bei adsb.fi).
+  const drag = { id:null, x:0, y:0, start:null, moving:false, last:null, swallowUntil:0 };
+  const canDrag = () => AS.source && AS.source.id === "free" && !AS.state.track;
+  const radarEl = $("radar");
+  radarEl.addEventListener("pointerdown", e => {
+    if(!canDrag() || drag.id !== null || (e.pointerType === "mouse" && e.button !== 0)) return;
+    drag.id = e.pointerId; drag.x = e.clientX; drag.y = e.clientY;
+    drag.start = { ...AS.state.center }; drag.moving = false; drag.last = null;
+  });
+  radarEl.addEventListener("pointermove", e => {
+    if(e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if(!drag.moving){
+      if(Math.hypot(dx, dy) < 8) return;          // kleine Bewegung bleibt ein Antippen
+      drag.moving = true;
+      try{ radarEl.setPointerCapture(e.pointerId); }catch(err){}
+    }
+    const d = Math.hypot(dx, dy) / AS.pxPerNm;
+    // Finger nach rechts schiebt das Bild nach rechts, die neue Mitte liegt also im Westen
+    const brg = Math.atan2(-dx, dy) * 180 / Math.PI;
+    drag.last = d > 0 ? destPoint(drag.start, d, brg) : drag.start;
+    AS.moveCenter(drag.last, false);
+  });
+  function endDrag(e){
+    if(e.pointerId !== drag.id) return;
+    const moved = drag.moving && drag.last;
+    drag.id = null; drag.moving = false;
+    if(!moved) return;
+    drag.swallowUntil = Date.now() + 400;          // der folgende Klick ist kein Antippen
+    goFree(drag.last);
+  }
+  radarEl.addEventListener("pointerup", endDrag);
+  radarEl.addEventListener("pointercancel", endDrag);
+  AS.swallowClick = () => Date.now() < drag.swallowUntil;
+
+  // Ortssuche über das bestehende Suchfeld: GeoNames-Orte ab 15.000 Einwohnern weltweit,
+  // auch unter anderen Namen (München, Mailand, Hanoi). Die Liste wird erst bei der ersten Suche geladen.
+  const normPlace = t => t.replace(/ß/g, "ss").normalize("NFD").replace(/[̀-ͯ]/g, "")
+                          .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  let placeList = null, placeLoad = null;
+  function loadPlaceList(){
+    if(placeList) return Promise.resolve(placeList);
+    if(!placeLoad) placeLoad = fetch("places-world.tsv").then(r => {
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then(txt => {
+      const list = [];
+      for(const line of txt.split("\n")){
+        const f = line.split("\t"); if(f.length < 5) continue;
+        const names = [f[0]].concat(f[5] ? f[5].split("|") : []);
+        list.push({ n:f[0], lat:+f[1], lon:+f[2], cc:f[4], names, keys:names.map(normPlace) });
+      }
+      placeList = list; return list;   // nach Einwohnern absteigend sortiert
+    }).catch(err => { placeLoad = null; throw err; });
+    return placeLoad;
+  }
+  AS.placeSearch = async raw => {
+    const q = normPlace(raw);
+    if(q.length < 2) return false;
+    if(!placeList) AS.setNotice(T.placeLoading, 4000);
+    let list;
+    try{ list = await loadPlaceList(); }
+    catch(e){ AS.setNotice(T.placeFail, 6000); return false; }
+    // Zuerst exakte Treffer (größter Ort gewinnt), ab vier Zeichen auch Anfänge („Frankf“)
+    let hit = null, idx = -1;
+    for(const p of list){ idx = p.keys.indexOf(q); if(idx >= 0){ hit = p; break; } }
+    if(!hit && q.length >= 4)
+      for(const p of list){ idx = p.keys.findIndex(k => k.startsWith(q)); if(idx >= 0){ hit = p; break; } }
+    if(!hit) return false;
+    const shown = idx > 0 ? `${hit.names[idx]} · ${hit.n}` : hit.n;
+    goFree({ lat:hit.lat, lon:hit.lon });
+    AS.setNotice(T.placeAt(shown, hit.cc), 4000);
+    return true;
+  };
+  $("search").placeholder = T.searchPh; $("search").setAttribute("aria-label", T.searchPh);
 
   /* ============ Einstellungen: Block „Nur für dich“ ============ */
   const slot = $("ownerSlot");

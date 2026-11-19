@@ -2,7 +2,7 @@
 
 Ein Flugradar für den Browser, das die Flugzeuge rund um den eigenen Standort zeigt. Teil des Projekts [adsb-radar.de](https://adsb-radar.de). Läuft als Web-App und lässt sich auf dem Smartphone wie eine App auf den Startbildschirm legen.
 
-Aktuelle Version: **3.6** (steht unten rechts in der App).
+Aktuelle Version: **3.7** (steht unten rechts in der App).
 
 ## Funktionen
 
@@ -23,7 +23,9 @@ Aktuelle Version: **3.6** (steht unten rechts in der App).
 
 Zusatzfunktionen nur für den Betreiber, in `owner.js`. Die Datei wird nur geladen, wenn im Browser ein Owner-Code liegt; Gäste bekommen sie nie. Anmeldung: fünfmal schnell auf die Uhrzeit oben rechts tippen (funktioniert auch in der installierten App) oder `adsb-radar.de/#owner` aufrufen. Jeder Owner-Endpunkt prüft den Code zusätzlich auf dem Server.
 
-- **Datenquelle** oben neben dem Namen: Standort (GPS), Heim-Pi (eigener Empfänger) oder Fixpunkt. Im Heim-Pi- und Fixpunkt-Modus markiert ein Kreuz die Mitte, der blaue Punkt bleibt der eigene Standort.
+- **Datenquelle** oben neben dem Namen: Standort (GPS), Heim-Pi (eigener Empfänger), Fixpunkt oder Frei. Im Heim-Pi-, Fixpunkt- und Frei-Modus markiert ein Kreuz die Mitte, der blaue Punkt bleibt der eigene Standort.
+- **Frei:** Mit Finger oder Maus lässt sich das Radar verschieben; Karte und Flugzeuge gleiten mit, neu geladen wird beim Loslassen. Ein Wisch reicht etwa so weit wie der Bildschirm (bei 160 NM rund 500 km). Der letzte Punkt bleibt gespeichert.
+- **Ortssuche:** Das Suchfeld findet auch Orte weltweit ab 15.000 Einwohnern, auch unter anderen Namen (München, Mailand, Hanoi); ab vier Buchstaben genügt der Anfang. Ein Treffer schaltet auf „Frei“ und setzt die Mitte dorthin. Eingaben mit Ziffern gelten immer als Callsign, und passt der Suchtext auf ein Flugzeug im Umkreis, wird wie bisher nur gefiltert.
 - **Favoriten** mit Telegram-Alarm im Umkreis von 20 NM um den eigenen Standort: per Stern im Detailblatt oder als Präfix in den Einstellungen. Favoriten tragen im Radar einen orangen Ring, der Alarmradius ist ein orange gestrichelter Kreis um den Standort. Die Liste wird vor jedem Speichern frisch vom Server geholt, damit nichts überschrieben wird.
 - **Werkzeugleiste:** 3D-Ansicht, Regenradar des DWD (in jeder Datenquelle und in der Flughafenansicht), Flughafenansicht Stuttgart (EDDS) als freigestellter Lageplan; dort empfängt adsb.fi auch den Bodenverkehr gut. Flugzeuge nach Zustand eingefärbt (am Stand grau, rollend blau, auf der Piste und in der Luft hell) mit Namensschild aus Callsign und Typ, Kennzahlen oben, abgeleitete Betriebsrichtung unten und eine Bewegungsliste (im Anflug mit geschätzter Landezeit, startet, rollt, am Stand). Die Einteilung schätzt die App aus Position, Höhe, Tempo und Kurs. Bodenfahrzeuge erscheinen als kleine Quadrate und werden getrennt gezählt; im Radar und in der Liste fehlen sie, weil sie keine Flugzeuge sind.
 - **Einstellungen:** Kompass (iPhone, Standort-Modus; Radar und Karte drehen mit der Blickrichtung), Link zur 3D-Empfangsreichweite des Heim-Pi (`coverage.html`), Abmelden.
@@ -40,6 +42,7 @@ help.html, help-en.html     Hilfe
 legal.html, legal-en.html   Impressum und Datenschutz (die deutsche Fassung ist verbindlich)
 sw.js                  Abschalt-Service-Worker für Altbesucher der früheren öffentlichen App
 places.tsv             Ortsnamen ab 10.000 Einwohnern (GeoNames, CC BY 4.0), nur bei aktiver Karte geladen
+places-world.tsv       Owner: Orte weltweit ab 15.000 Einwohnern mit Alternativnamen für die Ortssuche (GeoNames cities15000, CC BY 4.0), erst bei der ersten Suche geladen
 fonts/                 Barlow Semi Condensed 400/600/700 und IBM Plex Mono 400/600 (SIL OFL)
 ```
 
@@ -47,7 +50,7 @@ Es gibt keinen Build-Schritt. Schriften, Ortsnamen, Kartenbibliothek und three.j
 
 ## Einrichtung
 
-1. Alle Dateien samt `places.tsv` und Ordner `fonts/` in den Root dieses Repos legen.
+1. Alle Dateien samt `places.tsv`, `places-world.tsv` und Ordner `fonts/` in den Root dieses Repos legen.
 2. Unter **Settings → Pages**: *Deploy from a branch*, dann `main` und `/ (root)` wählen.
 3. Aufruf unter der eigenen Domain [adsb-radar.de](https://adsb-radar.de).
 
@@ -83,7 +86,7 @@ Für einen anderen Flughafen den ICAO-Code in der Abfrage und das Objekt `AP` am
 Am Anfang des Skripts in `index.html`:
 
 ```js
-const APP_VERSION = "3.6";                    // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.7";                    // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";     // Backend
 ```
 

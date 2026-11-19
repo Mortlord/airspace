@@ -1106,7 +1106,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 <script>
 /* ============ Konfiguration ============ */
-const APP_VERSION = "3.6";   // bei jeder Auslieferung erhöhen
+const APP_VERSION = "3.7";   // bei jeder Auslieferung erhöhen
 const BASE = "https://api.adsb-radar.de";
 const LS = {
   get:(k,d)=>{try{const v=localStorage.getItem("asl_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -1353,6 +1353,19 @@ const AS = {
   mapForced: ()=>false,         // Kartenebene zeigen, auch wenn die Hintergrundkarte aus ist (Regenradar)
   paused: ()=>false,            // Datenabruf des Radars anhalten (Flughafenansicht)
   onSheet: ()=>{},              // Detailblatt geöffnet (a) oder Flughafen/geschlossen (null)
+  swallowClick: ()=>false,      // nächsten Klick aufs Radar ignorieren (Ende einer Ziehgeste)
+  placeSearch: null,            // async (Suchtext) => true, wenn ein Ort gefunden und angesprungen wurde
+  get pxPerNm(){ return (cssSize*0.45)/state.radius; },
+  // Mitte der aktuellen Datenquelle verschieben (Owner, Quelle „Frei“). doFetch: sofort neu laden
+  moveCenter(pos, doFetch){
+    if(!AS.source || state.track || !pos) return;
+    AS.source.center=pos; state.center=pos;
+    updateBgMap(); updateCounts(); requestDraw();
+    if(doFetch){
+      fetchGen++; backoffUntil=0;   // laufende Antwort für die alte Mitte verwerfen
+      const go=()=>fetchBusy ? setTimeout(go,250) : fetchData(); go();
+    }
+  },
   setSource(src){
     if($("sheet").classList.contains("open")) closeSheet();
     fetchGen++;
@@ -2333,10 +2346,16 @@ function followTrack(force){
 
 // Enter im Suchfeld: Treffer im Umkreis -> nur filtern (wie bisher); sonst weltweit nach dem Callsign suchen
 async function runSearch(){
-  const q=$("search").value.trim().toUpperCase();
+  const raw=$("search").value.trim(), q=raw.toUpperCase();
   $("search").blur();
   if(!q) return;
   if(!state.track && inRange().length>0) return;
+  // Owner: Ortsnamen (ohne Ziffern) zuerst als Ort suchen, sonst weiter als Callsign
+  if(AS.placeSearch && !/\d/.test(q)){
+    let hit=false;
+    try{ hit=await AS.placeSearch(raw); }catch(e){ console.warn("Ortssuche:",e.message); }
+    if(hit){ $("search").value=""; state.query=""; updateCounts(); requestDraw(); return; }
+  }
   if(state.track && (state.track.cs===q || state.track.label.startsWith(q+" "))) return;
   if(!/^[A-Z0-9]{2,8}$/.test(q)){ setNotice(TXT.badQuery); return; }
   setNotice(TXT.searching(q), 15000);
@@ -2892,6 +2911,7 @@ function renderMetarSheet(st){
 
 /* ============ Tippen auf Radar ============ */
 canvas.addEventListener("click",ev=>{
+  if(AS.swallowClick()) return;   // Klick am Ende einer Ziehgeste (Owner) ist kein Antippen
   const rect=canvas.getBoundingClientRect();
   const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
   let best=null,bd=1e9;
